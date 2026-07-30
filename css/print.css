@@ -1,0 +1,23 @@
+/* ============================================================================
+   Druck: nur das aktuelle Blatt drucken (DIN A4), Rest ausblenden.
+   Aktiviert über <body class="print-blatt"> beim Drucken eines Blatts.
+   ==========================================================================*/
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff !important; }
+  .topbar, .nav, .btnrow, .pager, .footer, .crumb { display: none !important; }
+
+  /* Standard: Seite druckbar */
+  body.print-blatt .wrap > *:not(.blatt-print) { display: none !important; }
+  body.print-blatt .blatt-print {
+    border: none !important; margin: 0 !important; padding: 0 !important;
+    background: #fff !important; color: #000 !important;
+  }
+  .blatt-print, .blatt-print * { color: #000 !important; }
+  .blatt-head { border-color: #000 !important; }
+  .blatt-head .no { background: #000 !important; color: #fff !important; }
+  .zeichnung-halter { border: none !important; page-break-inside: avoid; }
+  .az-blatt { width: 100% !important; }
+  .tab th { background: #eee !important; }
+  .frage, .formel { background: #f4f4f4 !important; }
+}

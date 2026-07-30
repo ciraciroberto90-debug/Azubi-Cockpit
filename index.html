@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Azubi Cockpit — Mechatroniker/in</title>
+  <meta name="description" content="Digitales Ausbildungs-Cockpit für Mechatroniker/innen: strukturiert nach Ausbildungsrahmenplan und Lernfeldern, mit druckfertigen Arbeitsblättern, normgerechten technischen Zeichnungen und Lösungsheften.">
+  <link rel="stylesheet" href="css/cockpit.css">
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">
+      <span class="dot"></span>
+      <span>Azubi&nbsp;Cockpit <small>Mechatroniker/in</small></span>
+    </a>
+    <nav class="nav">
+      <a data-k="start" href="#/">Start</a>
+      <a data-k="lj1" href="#/lj/1">1. Lehrjahr</a>
+      <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>
+      <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>
+      <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>
+    </nav>
+  </header>
+
+  <main id="app"><!-- Views werden hier gerendert --></main>
+
+  <!-- Daten -->
+  <script src="js/data/curriculum.js"></script>
+  <!-- Zeichen-Engine (normgerecht) -->
+  <script src="js/lib/zeichnung.js"></script>
+  <!-- Modul-Inhalte -->
+  <script src="js/module/m1-arbeitssicherheit.js"></script>
+  <script src="js/module/m5-grundkurs-metall.js"></script>
+  <!-- App -->
+  <script src="js/app.js"></script>
+  <script>
+    (function () {
+      var t = document.getElementById("themeToggle");
+      if (!t) return;
+      t.addEventListener("click", function (e) {
+        e.preventDefault();
+        var root = document.documentElement;
+        var cur = root.getAttribute("data-theme");
+        var next = cur === "dark" ? "light" : (cur === "light" ? "dark" : "dark");
+        root.setAttribute("data-theme", next);
+      });
+    })();
+  </script>
+</body>
+</html>
