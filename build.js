@@ -11,6 +11,7 @@ var css = read("css/cockpit.css") + "\n" + read("css/print.css");
 var js = [
   "js/data/curriculum.js",
   "js/lib/zeichnung.js",
+  "js/lib/teile.js",
   "js/module/m1-arbeitssicherheit.js",
   "js/module/m5-grundkurs-metall.js",
   "js/app.js",

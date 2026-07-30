@@ -37,7 +37,31 @@ Empfohlen für den Druck: ein einzelnes Blatt öffnen → **„Dieses Blatt druc
 > im Projektordner einen kleinen Server starten, z. B. `python3 -m http.server`, und
 > `http://localhost:8000` öffnen.
 
+## Parametrischer Teile-Generator (`js/lib/teile.js`)
+
+Werkstücke werden als **Daten** beschrieben, die Engine erzeugt daraus automatisch
+die normgerechte Zeichnung (Vorderansicht + Schnitt A–A + Bemaßung + Schriftfeld)
+**und** die Prüfmaße. So entstehen viele Aufgaben schnell und im selben Standard.
+
+```js
+AZ.parts.platte({ benennung:"Halteplatte", nummer:"GM-101", w:90, h:50, t:15,
+  fase:2, ra:"3,2",
+  features:[ {typ:"bohrung", x:25, y:25, d:12, passung:"H9"},
+             {typ:"gewinde", x:65, y:25, gew:"M8"} ] });
+// -> .svg("fertig") | .svg("ergaenzen")  +  .masse()  (Prüftabelle, auto)
+```
+
+Unterstützt: Bohrungen (mit Passung H9 / Senkung), Gewinde (M3–M12, Kernloch DIN 13),
+Fase, Oberfläche Ra, Schnitt mit Schraffur — sowie `AZ.parts.biegeteil(...)`.
+
+## Aufgaben-Katalog & Lernpfad
+
+`Grundkurs Metall` ist als **Katalog** aufgebaut (`js/module/m5-grundkurs-metall.js`):
+7 Teilgebiete (Prüfen, Feilen, Sägen, Bohren & Senken, Gewinde, Biegen, Übungsstück)
+mit Theorie + generierten Aufgaben. Das Cockpit zeigt einen **empfohlenen Lernpfad**
+und einen **filterbaren Katalog** (Thema · Schwierigkeit).
+
 ## Status
 
-- **Fertig (Muster):** 1. Lehrjahr — *Arbeitssicherheit* und *Grundkurs Metall* (Aufgabe, Theorie, Zeichnung fertig + zum Ergänzen, Praxis, Lösungsheft).
-- **Gerüst:** alle weiteren Module über 3,5 Jahre (Struktur, Rahmenplan-Bezug, Lernfeld-Zuordnung stehen) — Inhalte folgen im gleichen Qualitätsstandard.
+- **Fertig:** 1. Lehrjahr — *Arbeitssicherheit* und **kompletter *Grundkurs Metall*** (Katalog mit Lernpfad, generierte Zeichnungen, Prüfmaße, Lösungen).
+- **Gerüst:** alle weiteren Module über 3,5 Jahre (Struktur, Rahmenplan-Bezug, Lernfeld-Zuordnung stehen) — werden mit dem Generator im gleichen Standard gefüllt.

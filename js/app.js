@@ -119,7 +119,9 @@
     var lfChips = lj.lernfelder.map(function (nr) { return '<span class="chip">LF ' + nr + '</span>'; }).join("");
 
     var body;
-    if (content && content.bausteine) {
+    if (content && content.teilgebiete) {
+      body = renderKatalog(id, content);
+    } else if (content && content.bausteine) {
       var cards = content.bausteine.map(function (bs) {
         return '<a class="bs" href="#/modul/' + id + '/' + bs.id + '">' +
           '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
@@ -144,6 +146,71 @@
       '<div class="footer">Modul-ID ' + m.id + '</div>' +
       '</div>'
     );
+    if (content && content.teilgebiete) wireKatalog();
+  }
+
+  /* ---------- Katalog (Lernpfad + Filter) ---------- */
+  function bsById(content, bid) { return content.bausteine.filter(function (b) { return b.id === bid; })[0]; }
+
+  function renderKatalog(id, content) {
+    // Empfohlener Lernpfad (nummeriert)
+    var pfad = content.lernpfad.map(function (bid, i) {
+      var bs = bsById(content, bid); if (!bs) return "";
+      return '<a class="pfad-item" href="#/modul/' + id + '/' + bs.id + '">' +
+        '<span class="pfad-n">' + (i + 1) + '</span>' +
+        '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
+        '<span class="pfad-t">' + bs.titel + '</span>' +
+        '<span class="pfad-tg">' + (bs.teilgebietTitel || "") + '</span></a>';
+    }).join("");
+
+    // Filter-Chips
+    var tgChips = '<button class="fchip active" data-grp="tg" data-val="alle">Alle Themen</button>' +
+      content.teilgebiete.map(function (t) { return '<button class="fchip" data-grp="tg" data-val="' + t.id + '">' + t.titel + '</button>'; }).join("");
+    var schwChips = ["alle", "leicht", "mittel", "schwer"].map(function (s, i) {
+      return '<button class="fchip' + (i === 0 ? " active" : "") + '" data-grp="schw" data-val="' + s + '">' + (s === "alle" ? "Alle Stufen" : s) + '</button>';
+    }).join("");
+
+    // Katalog-Karten
+    var cards = content.bausteine.map(function (bs) {
+      return '<a class="kcard" data-tg="' + bs.teilgebiet + '" data-schw="' + bs.schwierigkeit + '" href="#/modul/' + id + '/' + bs.id + '">' +
+        '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
+        '<div class="t"><h3>' + bs.titel + '</h3><small>' + bs.blattNr + ' · ' + (bs.schwierigkeit !== "—" ? bs.schwierigkeit : "Theorie") + '</small></div>' +
+        '<span class="mono" style="color:var(--ink-3)">→</span></a>';
+    }).join("");
+
+    return '<p class="lead">' + content.intro + '</p>' +
+      '<section style="margin-top:24px"><p class="eyebrow">Empfohlener Lernpfad</p><h2>Schritt für Schritt</h2>' +
+      '<div class="pfad">' + pfad + '</div></section>' +
+      '<section style="margin-top:34px"><p class="eyebrow">Aufgaben-Katalog</p><h2>Frei auswählen</h2>' +
+      '<div class="filters"><div class="fgroup">' + tgChips + '</div><div class="fgroup">' + schwChips + '</div></div>' +
+      '<div class="kgrid">' + cards + '</div>' +
+      '<p class="chk-hint" id="kcount" style="margin-top:12px"></p></section>';
+  }
+
+  function wireKatalog() {
+    var state = { tg: "alle", schw: "alle" };
+    var chips = Array.prototype.slice.call(document.querySelectorAll(".fchip"));
+    var cards = Array.prototype.slice.call(document.querySelectorAll(".kcard"));
+    var countEl = document.getElementById("kcount");
+    function apply() {
+      var n = 0;
+      cards.forEach(function (c) {
+        var ok = (state.tg === "alle" || c.getAttribute("data-tg") === state.tg) &&
+          (state.schw === "alle" || c.getAttribute("data-schw") === state.schw);
+        c.style.display = ok ? "" : "none"; if (ok) n++;
+      });
+      if (countEl) countEl.textContent = n + " Aufgabe(n) sichtbar";
+    }
+    chips.forEach(function (ch) {
+      ch.addEventListener("click", function () {
+        var grp = ch.getAttribute("data-grp");
+        state[grp] = ch.getAttribute("data-val");
+        chips.filter(function (x) { return x.getAttribute("data-grp") === grp; })
+          .forEach(function (x) { x.classList.toggle("active", x === ch); });
+        apply();
+      });
+    });
+    apply();
   }
 
   /* ---------- View: Blatt (Detail) ---------- */
