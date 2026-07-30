@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azubi Cockpit — Mechatroniker/in</title>
+<meta name="description" content="Digitales Ausbildungs-Cockpit fuer Mechatroniker/innen: Ausbildungsrahmenplan und Lernfelder, druckfertige Arbeitsblaetter, normgerechte technische Zeichnungen, Loesungshefte.">
+<style>
+/* ============================================================================
+   Azubi Cockpit — Cockpit-UI (Design: Werkstatt / Blaupause, Theme-aware)
+   ==========================================================================*/
+:root{
+  --ground:#EAEDE8; --panel:#FBFCFA; --panel-2:#F1F3EF;
+  --ink:#15181B; --ink-2:#4A525B; --ink-3:#79828B;
+  --line:#CDD3CE; --line-strong:#AEB6AF;
+  --accent:#E4531D; --accent-ink:#fff; --blue:#0F6E78; --ok:#3F7D3A; --warn:#C8860B;
+  --grid: color-mix(in srgb, var(--line) 55%, transparent);
+  --font-body: system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono: ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --r:5px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--ground:#0E1113;--panel:#161A1D;--panel-2:#1C2124;--ink:#ECEFEB;--ink-2:#9AA4AC;--ink-3:#6C757D;
+    --line:#2A3033;--line-strong:#3A4247;--accent:#FF6A38;--accent-ink:#160a04;--blue:#45B5C0;--ok:#67B95F;--warn:#E7AE3A;
+    --grid:color-mix(in srgb,var(--line) 85%,transparent);}
+}
+:root[data-theme="light"]{--ground:#EAEDE8;--panel:#FBFCFA;--panel-2:#F1F3EF;--ink:#15181B;--ink-2:#4A525B;--ink-3:#79828B;
+  --line:#CDD3CE;--line-strong:#AEB6AF;--accent:#E4531D;--accent-ink:#fff;--blue:#0F6E78;--ok:#3F7D3A;--warn:#C8860B;--grid:color-mix(in srgb,var(--line) 55%,transparent);}
+:root[data-theme="dark"]{--ground:#0E1113;--panel:#161A1D;--panel-2:#1C2124;--ink:#ECEFEB;--ink-2:#9AA4AC;--ink-3:#6C757D;
+  --line:#2A3033;--line-strong:#3A4247;--accent:#FF6A38;--accent-ink:#160a04;--blue:#45B5C0;--ok:#67B95F;--warn:#E7AE3A;--grid:color-mix(in srgb,var(--line) 85%,transparent);}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--font-body);line-height:1.55;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:26px 26px;}
+a{color:inherit;text-decoration:none}
+.mono{font-family:var(--font-mono)}
+
+/* ---- Topbar ---- */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;
+  padding:12px clamp(14px,4vw,32px);background:color-mix(in srgb,var(--panel) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line-strong)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em;font-size:18px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.brand small{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.nav a{font-family:var(--font-mono);font-size:12.5px;padding:6px 11px;border-radius:100px;border:1px solid transparent;color:var(--ink-2)}
+.nav a:hover{border-color:var(--line-strong);color:var(--ink)}
+.nav a.active{background:var(--accent);color:var(--accent-ink);font-weight:700}
+
+.wrap{max-width:1060px;margin:0 auto;padding:clamp(20px,4vw,44px) clamp(14px,4vw,32px)}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--accent)}
+h1{font-weight:800;letter-spacing:-.02em;font-size:clamp(30px,6vw,52px);line-height:1;margin:.1em 0 .2em;text-wrap:balance}
+h2{font-weight:800;letter-spacing:-.01em;font-size:clamp(22px,3.4vw,32px);margin:0 0 .3em}
+p{color:var(--ink-2);max-width:70ch}
+.lead{font-size:clamp(16px,2.1vw,19px);color:var(--ink);max-width:62ch}
+.crumb{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-bottom:14px}
+.crumb a{color:var(--accent)}
+section{margin-top:clamp(34px,5vw,60px)}
+
+/* ---- Prinzip flow ---- */
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+@media(max-width:720px){.flow{grid-template-columns:1fr}}
+.step{background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:16px}
+.step .num{font-family:var(--font-mono);font-size:12px;color:var(--accent);font-weight:700}
+.step h3{margin:6px 0 4px;font-size:16px}
+.step p{font-size:13.5px;margin:0}
+
+/* ---- Duale Info ---- */
+.duale{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:640px){.duale{grid-template-columns:1fr}}
+.duale .card{background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:16px 18px}
+.duale .card h3{margin:0 0 4px;font-size:16px}
+.duale .card small{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- Lehrjahr cards ---- */
+.lj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.lj-grid{grid-template-columns:1fr}}
+.lj-card{display:block;background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:18px;transition:border-color .15s,transform .15s}
+.lj-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.lj-card .lj{font-family:var(--font-mono);font-weight:700;font-size:12px;letter-spacing:.1em;color:var(--accent-ink);background:var(--accent);padding:3px 9px;border-radius:3px;display:inline-block}
+.lj-card h3{margin:12px 0 4px;font-size:19px}
+.lj-card p{font-size:13.5px;margin:0 0 12px}
+.progress{height:7px;background:var(--panel-2);border:1px solid var(--line);border-radius:100px;overflow:hidden}
+.progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--accent))}
+.lj-card .pmeta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin-top:6px;display:flex;justify-content:space-between}
+
+/* ---- Modul list ---- */
+.mod-list{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.mod-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;background:var(--panel);
+  border:1px solid var(--line-strong);border-radius:var(--r);padding:14px 16px;transition:border-color .15s}
+.mod-row:hover{border-color:var(--accent)}
+.mod-row.locked{opacity:.7}
+.badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:3px;font-weight:700;white-space:nowrap}
+.badge.fertig{background:color-mix(in srgb,var(--ok) 18%,var(--panel));color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 45%,var(--line))}
+.badge.geruest{background:var(--panel-2);color:var(--ink-3);border:1px solid var(--line-strong)}
+.mod-row h3{margin:0 0 2px;font-size:16px}
+.mod-row .sub{font-size:12.5px;color:var(--ink-3)}
+.mod-row .weeks{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);text-align:right;white-space:nowrap}
+.mod-row .fach{font-family:var(--font-mono);font-size:10.5px;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+
+/* ---- Lernfelder box ---- */
+.lf-box{background:var(--panel);border:1px solid var(--line-strong);border-left:3px solid var(--blue);border-radius:var(--r);padding:14px 16px;margin-top:14px}
+.lf-box h3{margin:0 0 8px;font-size:15px}
+.lf-item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.lf-item:last-child{border-bottom:0}
+.lf-item .n{font-family:var(--font-mono);font-weight:700;color:var(--blue)}
+.lf-item .h{font-family:var(--font-mono);color:var(--ink-3);font-size:12px}
+
+/* ---- Modul-Detailleiste ---- */
+.mod-meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.chip{font-family:var(--font-mono);font-size:11.5px;padding:4px 10px;border-radius:100px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--panel)}
+.chip b{color:var(--ink)}
+
+/* ---- Bausteine (Blätter) ---- */
+.baustein-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
+@media(max-width:700px){.baustein-grid{grid-template-columns:1fr}}
+.bs{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:14px 16px;transition:border-color .15s}
+.bs:hover{border-color:var(--accent)}
+.bs .t{flex:1}
+.bs .t h3{margin:0;font-size:15px}
+.bs .t small{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.typ{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:4px 8px;border-radius:3px}
+.typ.aufgabe{background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent)}
+.typ.theorie{background:color-mix(in srgb,var(--blue) 16%,var(--panel));color:var(--blue)}
+.typ.zeichnung{background:color-mix(in srgb,var(--blue) 16%,var(--panel));color:var(--blue)}
+.typ.praxis{background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent)}
+.typ.sicherheit{background:color-mix(in srgb,var(--warn) 18%,var(--panel));color:var(--warn)}
+.typ.loesung{background:color-mix(in srgb,var(--ok) 16%,var(--panel));color:var(--ok)}
+
+/* ---- Blatt (Detail) ---- */
+.blatt-print{background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:clamp(18px,3vw,32px);margin-top:16px}
+.blatt-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:16px}
+.blatt-head .no{font-family:var(--font-mono);font-weight:700;color:var(--accent-ink);background:var(--accent);padding:4px 10px;border-radius:3px;font-size:13px}
+.blatt-head h2{margin:0;font-size:20px}
+.blatt-head .app-tag{margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.blatt-print h3{font-size:16px;margin:18px 0 6px}
+.blatt-print p{color:var(--ink);font-size:14.5px}
+.bl-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.bl-meta span{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);border:1px solid var(--line);border-radius:100px;padding:2px 9px}
+.bl-meta.ok span{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
+.ul,.ol{margin:6px 0;padding-left:22px}.ul li,.ol li{margin:4px 0;color:var(--ink);font-size:14.5px}
+.frage{background:var(--panel-2);border:1px dashed var(--line-strong);border-radius:4px;padding:10px 12px;font-size:14px;color:var(--ink)!important}
+.formel{font-family:var(--font-mono);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;display:inline-block;color:var(--ink)!important}
+.tab{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+.tab th,.tab td{border:1px solid var(--line-strong);padding:7px 10px;text-align:left}
+.tab th{background:var(--panel-2);font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.tab td{color:var(--ink)}
+.chk{display:flex;align-items:flex-start;gap:10px;padding:6px 0;font-size:14.5px;color:var(--ink)}
+.box{width:16px;height:16px;border:1.6px solid var(--line-strong);border-radius:3px;flex:none;margin-top:2px}
+.chk-hint{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)!important}
+.unterschrift{display:flex;flex-wrap:wrap;gap:20px;margin-top:20px;padding-top:14px;border-top:1px dashed var(--line-strong);font-family:var(--font-mono);font-size:13px;color:var(--ink-2)}
+.zeichnung-halter{border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;background:#fdfdfb;margin:10px 0}
+.zeichnung-halter .az-blatt{display:block;width:100%;height:auto}
+
+/* Sicherheitszeichen */
+.sign-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0}
+.sign-card{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+.sign-card small{display:block;color:var(--ink-3);font-size:11.5px}
+.sign{width:38px;height:38px;flex:none}
+
+/* Buttons */
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn{font-family:var(--font-mono);font-size:13px;font-weight:700;padding:9px 16px;border-radius:100px;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:hover{border-color:var(--accent)}
+
+.pager{display:flex;justify-content:space-between;gap:10px;margin-top:20px}
+.footer{margin-top:60px;padding:22px 0;border-top:1px solid var(--line-strong);font-family:var(--font-mono);font-size:12px;color:var(--ink-3);text-align:center}
+.note-mark{color:var(--accent);font-weight:700}
+
+/* ============================================================================
+   Druck: nur das aktuelle Blatt drucken (DIN A4), Rest ausblenden.
+   Aktiviert über <body class="print-blatt"> beim Drucken eines Blatts.
+   ==========================================================================*/
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff !important; }
+  .topbar, .nav, .btnrow, .pager, .footer, .crumb { display: none !important; }
+
+  /* Standard: Seite druckbar */
+  body.print-blatt .wrap > *:not(.blatt-print) { display: none !important; }
+  body.print-blatt .blatt-print {
+    border: none !important; margin: 0 !important; padding: 0 !important;
+    background: #fff !important; color: #000 !important;
+  }
+  .blatt-print, .blatt-print * { color: #000 !important; }
+  .blatt-head { border-color: #000 !important; }
+  .blatt-head .no { background: #000 !important; color: #fff !important; }
+  .zeichnung-halter { border: none !important; page-break-inside: avoid; }
+  .az-blatt { width: 100% !important; }
+  .tab th { background: #eee !important; }
+  .frage, .formel { background: #f4f4f4 !important; }
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#/"><span class="dot"></span><span>Azubi&nbsp;Cockpit <small>Mechatroniker/in</small></span></a>
+  <nav class="nav">
+    <a data-k="start" href="#/">Start</a>
+    <a data-k="lj1" href="#/lj/1">1. Lehrjahr</a>
+    <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>
+    <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>
+    <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>
+  </nav>
+</header>
+<main id="app"></main>
+<script>
+/* ============================================================================
+   Azubi Cockpit — Curriculum (Gerüst über 3,5 Jahre)
+   Ausbildungsberuf: Mechatroniker/in
+   Grundlage: Ausbildungsrahmenplan (MechatronikerAusbV), IHK "Sachliche und
+   zeitliche Gliederung". Zeitrichtwerte in Wochen sind Richtwerte des
+   Rahmenplans und werden an den betrieblichen Ausbildungsplan angepasst.
+
+   status: "fertig"  -> Muster-Modul, Inhalte + Blätter vorhanden
+           "geruest" -> Struktur angelegt, Inhalte folgen
+   ==========================================================================*/
+window.AZ_CURRICULUM = {
+  beruf: "Mechatroniker/in",
+  dauer: "3,5 Jahre (7 Halbjahre)",
+  prinzip: ["Aufgabe wird erklärt", "Theorie wird gemacht", "Praxis wird ausgeführt"],
+
+  /* Berufsschule — KMK-Rahmenlehrplan Mechatroniker/in (13 Lernfelder).
+     Stunden für LF1–LF4 belegt (Σ 280 h, 1. Jahr). Übrige Zeitrichtwerte
+     laut KMK-Rahmenlehrplan — vor Einsatz fachlich prüfen. */
+  lernfelder: [
+    { nr: 1,  lj: 1, stunden: 40,  titel: "Analysieren von Funktionszusammenhängen in mechatronischen Systemen" },
+    { nr: 2,  lj: 1, stunden: 80,  titel: "Herstellen mechanischer Teilsysteme" },
+    { nr: 3,  lj: 1, stunden: 100, titel: "Installieren elektrischer Betriebsmittel unter Beachtung sicherheitstechnischer Aspekte" },
+    { nr: 4,  lj: 1, stunden: 60,  titel: "Untersuchen der Energie- und Informationsflüsse in elektrischen, pneumatischen und hydraulischen Baugruppen" },
+    { nr: 5,  lj: 2, stunden: null, titel: "Kommunizieren mit Hilfe von Datenverarbeitungssystemen" },
+    { nr: 6,  lj: 2, stunden: null, titel: "Planen und Organisieren von Arbeitsabläufen" },
+    { nr: 7,  lj: 2, stunden: null, titel: "Realisieren mechatronischer Teilsysteme" },
+    { nr: 8,  lj: 2, stunden: null, titel: "Design und Erstellen mechatronischer Systeme" },
+    { nr: 9,  lj: 3, stunden: null, titel: "Untersuchen des Informationsflusses in komplexen mechatronischen Systemen" },
+    { nr: 10, lj: 3, stunden: null, titel: "Planen der Montage und Demontage" },
+    { nr: 11, lj: 3, stunden: null, titel: "Inbetriebnahme, Fehlersuche und Instandsetzung" },
+    { nr: 12, lj: 3, stunden: null, titel: "Vorbeugende Instandhaltung" },
+    { nr: 13, lj: 3, stunden: null, titel: "Übergabe von mechatronischen Systemen an Kundinnen und Kunden" },
+  ],
+
+  lehrjahre: [
+    /* ------------------------------------------------------------------ LJ1 */
+    {
+      nr: 1,
+      titel: "1. Lehrjahr",
+      untertitel: "Grundbildung — Sicherheit, Metall, Kommunikation",
+      pruefung: "Teil 1 der Abschlussprüfung (Zwischenprüfung)",
+      lernfelder: [1, 2, 3, 4],
+      module: [
+        {
+          id: "m1-arbeitssicherheit",
+          titel: "Arbeits- & Gesundheitsschutz, Umweltschutz",
+          fach: "Arbeitssicherheit",
+          wochen: "durchgängig · Grundkurs 2 Wo.",
+          rahmenplan: "Sicherheit u. Gesundheitsschutz bei der Arbeit; Umweltschutz",
+          normen: ["DIN EN ISO 7010", "ArbSchG §5", "DGUV", "BetrSichV"],
+          status: "fertig",
+          beschreibung: "Gefährdungen erkennen, PSA richtig anwenden, Sicherheitszeichen lesen, Gefährdungsbeurteilung — die Basis für alles Weitere.",
+        },
+        {
+          id: "m2-technische-kommunikation",
+          titel: "Betriebl. & technische Kommunikation · Techn. Zeichnen (Grundlagen)",
+          fach: "Kommunikation / TZ",
+          wochen: "7 Wo.",
+          rahmenplan: "Betriebliche und technische Kommunikation",
+          normen: ["DIN ISO 128-2", "DIN ISO 129-1", "DIN ISO 5455", "DIN EN ISO 7200"],
+          status: "geruest",
+          beschreibung: "Technische Zeichnungen lesen und erstellen, Skizzen, Stücklisten, Normen.",
+        },
+        {
+          id: "m3-planen-organisieren",
+          titel: "Planen und Organisieren der Arbeit, Bewerten der Ergebnisse",
+          fach: "Arbeitsplanung",
+          wochen: "5 Wo.",
+          rahmenplan: "Planen und Organisieren der Arbeit …",
+          normen: [],
+          status: "geruest",
+          beschreibung: "Arbeitsschritte planen, Material/Werkzeug bereitstellen, Ergebnisse bewerten.",
+        },
+        {
+          id: "m4-pruefen-anreissen",
+          titel: "Prüfen, Anreißen und Kennzeichnen",
+          fach: "Messtechnik",
+          wochen: "3 Wo.",
+          rahmenplan: "Prüfen, Anreißen und Kennzeichnen",
+          normen: ["DIN ISO 2768-1", "DIN EN ISO 286"],
+          status: "geruest",
+          beschreibung: "Messschieber & Bügelmessschraube lesen, Toleranzen verstehen (ISO 2768), anreißen und körnen.",
+        },
+        {
+          id: "m5-grundkurs-metall",
+          titel: "Grundkurs Metall — Manuelles & maschinelles Bearbeiten",
+          fach: "Metalltechnik",
+          wochen: "11 Wo.",
+          rahmenplan: "Manuelles u. maschinelles Spanen, Trennen und Umformen",
+          normen: ["DIN ISO 2768-1", "DIN ISO 128-2", "DIN ISO 129-1"],
+          status: "fertig",
+          beschreibung: "Feilen, Sägen, Bohren, Senken, Gewindeschneiden — mit echten technischen Zeichnungen zum Fertigen und Prüfen.",
+        },
+        {
+          id: "m6-fuegen",
+          titel: "Zusammenbauen und Verbinden von Bauteilen (Fügen)",
+          fach: "Montage",
+          wochen: "4 Wo.",
+          rahmenplan: "Zusammenbauen u. Verbinden von Bauteilen u. Baugruppen",
+          normen: [],
+          status: "geruest",
+          beschreibung: "Schraub-, Steck- und Klemmverbindungen; Baugruppen montieren.",
+        },
+        {
+          id: "m7-zp1",
+          titel: "Vorbereitung Zwischenprüfung (Teil 1)",
+          fach: "Prüfung",
+          wochen: "2 Wo.",
+          rahmenplan: "gestreckte Abschlussprüfung Teil 1",
+          normen: [],
+          status: "geruest",
+          beschreibung: "Prüfungssimulation praktisch + schriftlich.",
+        },
+      ],
+    },
+    /* ------------------------------------------------------------------ LJ2 */
+    {
+      nr: 2,
+      titel: "2. Lehrjahr",
+      untertitel: "Aufbau — Elektrotechnik, Pneumatik, Steuerungstechnik",
+      pruefung: "",
+      lernfelder: [5, 6, 7, 8],
+      module: [
+        { id: "m8-elektrotechnik", titel: "Grundlagen Elektrotechnik", fach: "Elektrotechnik", wochen: "6 Wo.", rahmenplan: "Elektrische Größen messen u. beurteilen", normen: ["DIN EN 60617", "DIN VDE 0100"], status: "geruest", beschreibung: "Stromkreis, Messen, Schutzmaßnahmen, Stromlaufpläne." },
+        { id: "m9-pneumatik", titel: "Pneumatik — Grundlagen", fach: "Pneumatik", wochen: "4 Wo.", rahmenplan: "Steuerungstechnik (pneumatisch)", normen: ["DIN ISO 1219-1", "DIN ISO 1219-2"], status: "geruest", beschreibung: "Zylinder, Ventile, Schaltpläne nach ISO 1219 zeichnen und ergänzen." },
+        { id: "m10-elektropneumatik", titel: "Elektropneumatik", fach: "Pneumatik/E-Technik", wochen: "4 Wo.", rahmenplan: "Steuerungstechnik", normen: ["DIN ISO 1219", "DIN EN 60617"], status: "geruest", beschreibung: "Magnetventile, Relaissteuerung, Verknüpfungen." },
+        { id: "m11-hydraulik", titel: "Hydraulik — Grundlagen", fach: "Hydraulik", wochen: "3 Wo.", rahmenplan: "Steuerungstechnik (hydraulisch)", normen: ["DIN ISO 1219-1"], status: "geruest", beschreibung: "Druck, Kraft, Ventile, Sicherheit." },
+        { id: "m12-sps", titel: "SPS — Grundlagen", fach: "Automatisierung", wochen: "6 Wo.", rahmenplan: "Programmieren mechatronischer Systeme", normen: ["DIN EN 61131-3"], status: "geruest", beschreibung: "Verdrahtung, KOP/FUP, Ein-/Ausgänge." },
+        { id: "m13-installation", titel: "Elektrische Installation & Schaltpläne", fach: "Elektrotechnik", wochen: "4 Wo.", rahmenplan: "Installieren elektrischer Baugruppen", normen: ["DIN EN 60617", "DIN EN 81346"], status: "geruest", beschreibung: "Stromlaufpläne lesen & erstellen." },
+        { id: "m14-sensorik", titel: "Sensorik & Aktorik", fach: "Automatisierung", wochen: "3 Wo.", rahmenplan: "Aufbauen u. Prüfen von Steuerungen", normen: [], status: "geruest", beschreibung: "Induktiv/kapazitiv/optisch, Antriebe." },
+        { id: "m15-montage", titel: "Montage & Inbetriebnahme von Baugruppen", fach: "Montage", wochen: "4 Wo.", rahmenplan: "Zusammenbauen mechatronischer Baugruppen", normen: [], status: "geruest", beschreibung: "Baugruppen prüfen und in Betrieb nehmen." },
+      ],
+    },
+    /* ------------------------------------------------------------------ LJ3 */
+    {
+      nr: 3,
+      titel: "3. Lehrjahr",
+      untertitel: "Automatisierung & Prüfungsvorbereitung (inkl. 7. Halbjahr)",
+      pruefung: "Teil 2 der Abschlussprüfung",
+      lernfelder: [9, 10, 11, 12, 13],
+      module: [
+        { id: "m16-sps-aufbau", titel: "SPS-Aufbau, Vernetzung & Bus", fach: "Automatisierung", wochen: "5 Wo.", rahmenplan: "Programmieren u. Vernetzen", normen: ["DIN EN 61131-3", "PROFINET"], status: "geruest", beschreibung: "Feldbus/IO-Link, Visualisierung." },
+        { id: "m17-antriebstechnik", titel: "Antriebstechnik", fach: "Antriebe", wochen: "4 Wo.", rahmenplan: "Antriebe auswählen u. in Betrieb nehmen", normen: [], status: "geruest", beschreibung: "Motoren, Frequenzumrichter, Parametrieren." },
+        { id: "m18-inbetriebnahme", titel: "Automatisierte Systeme in Betrieb nehmen", fach: "Automatisierung", wochen: "5 Wo.", rahmenplan: "Inbetriebnahme mechatronischer Systeme", normen: [], status: "geruest", beschreibung: "Gesamtanlage, Schnittstellen." },
+        { id: "m19-fehlersuche", titel: "Fehlersuche & Instandhaltung", fach: "Instandhaltung", wochen: "4 Wo.", rahmenplan: "Instandhalten mechatronischer Systeme", normen: [], status: "geruest", beschreibung: "Systematische Diagnose, Wartungsplan." },
+        { id: "m20-programmierung", titel: "Programmierung & Visualisierung", fach: "Automatisierung", wochen: "4 Wo.", rahmenplan: "Programmieren", normen: ["DIN EN 61131-3"], status: "geruest", beschreibung: "Ablaufsteuerungen, HMI." },
+        { id: "m21-pruefung2", titel: "Prüfungsvorbereitung Teil 2", fach: "Prüfung", wochen: "6 Wo.", rahmenplan: "betrieblicher Auftrag · Fachgespräch · schriftlich", normen: [], status: "geruest", beschreibung: "Abschlussprüfung Teil 2 gezielt vorbereiten." },
+      ],
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Azubi Cockpit — Zeichen-Engine (normgerecht)
+   Erzeugt technische Zeichnungen als SVG nach:
+     - DIN ISO 5455 (Maßstäbe, automatisch gewählt)
+     - DIN ISO 128-2 (Linienarten)
+     - DIN ISO 129-1 (Bemaßung)
+     - DIN ISO 5456-2 (Projektion, europäische Methode)
+     - DIN EN ISO 7200 (Schriftfeld) / DIN EN ISO 5457 (Blattformat)
+   Regel: Objekt hat reale mm-Maße; Engine skaliert genormt und passt es in den
+   Zeichenbereich ein -> nichts läuft über den Rand.
+   ==========================================================================*/
+window.AZ = window.AZ || {};
+
+AZ.NORM = {
+  /* Genormte Maßstäbe DIN ISO 5455 als Faktor (Zeichnung/Wirklichkeit) */
+  massstaebe: [
+    { r: 50, l: "50:1" }, { r: 20, l: "20:1" }, { r: 10, l: "10:1" },
+    { r: 5, l: "5:1" }, { r: 2, l: "2:1" }, { r: 1, l: "1:1" },
+    { r: 0.5, l: "1:2" }, { r: 0.2, l: "1:5" }, { r: 0.1, l: "1:10" },
+    { r: 0.05, l: "1:20" }, { r: 0.02, l: "1:50" }, { r: 0.01, l: "1:100" },
+    { r: 0.005, l: "1:200" }, { r: 0.002, l: "1:500" }, { r: 0.001, l: "1:1000" },
+  ],
+  /* DIN ISO 2768-1 Grenzabmaße Längenmaße (± mm) je Nennmaßbereich */
+  tolLaenge: {
+    grenzen: [3, 6, 30, 120, 400, 1000, 2000],
+    f: [0.05, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+    m: [0.1, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2],
+    c: [0.2, 0.3, 0.5, 0.8, 1.2, 2.0, 3.0],
+    v: [null, 0.5, 1.0, 1.5, 2.5, 4.0, 6.0],
+  },
+  /* Blattformate DIN EN ISO 5457 (Breite x Höhe mm) */
+  formate: {
+    A4quer: [297, 210], A4hoch: [210, 297], A3quer: [420, 297],
+  },
+};
+
+/* Grenzabmaß ± für ein Nennmaß und eine Toleranzklasse (ISO 2768-1) */
+AZ.grenzabmass = function (nennmass, klasse) {
+  klasse = klasse || "m";
+  var t = AZ.NORM.tolLaenge, g = t.grenzen, arr = t[klasse];
+  var n = Math.abs(nennmass);
+  for (var i = 0; i < g.length; i++) { if (n <= g[i]) return arr[i]; }
+  return arr[arr.length - 1];
+};
+
+/* Wählt den größten genormten Maßstab, mit dem (bw x bh) in (tw x th) passt */
+AZ.waehleMassstab = function (bw, bh, tw, th) {
+  var max = Math.min(tw / bw, th / bh);
+  var ms = AZ.NORM.massstaebe;
+  for (var i = 0; i < ms.length; i++) { if (ms[i].r <= max + 1e-9) return ms[i]; }
+  return ms[ms.length - 1];
+};
+
+var _azId = 0;
+
+/* ----------------------------------------------------------------------------
+   AZ.Blatt — ein Zeichnungsblatt mit Rahmen + Schriftfeld
+   cfg: { format, titel, werkstoff, nummer, ersteller, datum, toleranz,
+          projektion:"1", benennungZusatz }
+   ---------------------------------------------------------------------------*/
+AZ.Blatt = function (cfg) {
+  cfg = cfg || {};
+  var fmt = AZ.NORM.formate[cfg.format || "A4quer"];
+  this.W = fmt[0]; this.H = fmt[1];
+  this.cfg = cfg;
+  this.uid = "az" + (++_azId);
+  this.body = [];            // svg-Elemente des Zeichenbereichs
+  this.massstabLabel = cfg.massstab || "1:1";
+  // Rahmen/Ränder (ISO 5457: Heftrand links 20, sonst 10)
+  this.mL = 20; this.mR = 10; this.mT = 10; this.mB = 10;
+  // Schriftfeld (max. 180 breit ISO 7200) unten rechts
+  this.sfW = 180; this.sfH = 30;
+};
+
+AZ.Blatt.prototype._zeichenbereich = function () {
+  // Fläche für die Zeichnung: innerhalb Rahmen, oberhalb Schriftfeld
+  return {
+    x: this.mL + 6,
+    y: this.mT + 6,
+    w: (this.W - this.mR) - (this.mL) - 12,
+    h: (this.H - this.mB - this.sfH - 6) - (this.mT) - 12,
+  };
+};
+
+/* Zeichnung platzieren: worldBBox {x,y,w,h} (reale mm inkl. Bemaßung),
+   drawFn(pen) zeichnet in Welt-mm. Engine skaliert genormt + zentriert. */
+AZ.Blatt.prototype.zeichnung = function (worldBBox, drawFn) {
+  var zb = this._zeichenbereich();
+  var msf = AZ.waehleMassstab(worldBBox.w, worldBBox.h, zb.w, zb.h);
+  var s = msf.r;
+  this.massstabLabel = msf.l;
+  // Zentrieren im Zeichenbereich
+  var drawW = worldBBox.w * s, drawH = worldBBox.h * s;
+  var ox = zb.x + (zb.w - drawW) / 2 - worldBBox.x * s;
+  var oy = zb.y + (zb.h - drawH) / 2 - worldBBox.y * s;
+  var pen = new AZ.Pen(this, s, ox, oy);
+  drawFn(pen);
+  return this;
+};
+
+AZ.Blatt.prototype.push = function (svg) { this.body.push(svg); };
+
+/* Schriftfeld nach DIN EN ISO 7200 (kompakt) */
+AZ.Blatt.prototype._schriftfeld = function () {
+  var c = this.cfg;
+  var x = this.W - this.mR - this.sfW, y = this.H - this.mB - this.sfH;
+  var w = this.sfW, h = this.sfH;
+  var e = [];
+  function box(bx, by, bw, bh) { e.push('<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" class="az-sf"/>'); }
+  function k(bx, by, t) { e.push('<text x="' + bx + '" y="' + by + '" class="az-sfk">' + AZ.esc(t) + '</text>'); }
+  function v(bx, by, t) { e.push('<text x="' + bx + '" y="' + by + '" class="az-sfv">' + AZ.esc(t) + '</text>'); }
+  box(x, y, w, h);
+  // Spalten
+  var c1 = x, c2 = x + 108, c3 = x + 150;
+  e.push('<line x1="' + c2 + '" y1="' + y + '" x2="' + c2 + '" y2="' + (y + h) + '" class="az-sf"/>');
+  e.push('<line x1="' + c3 + '" y1="' + y + '" x2="' + c3 + '" y2="' + (y + h) + '" class="az-sf"/>');
+  // Zeilen linke Spalte
+  e.push('<line x1="' + c1 + '" y1="' + (y + 16) + '" x2="' + c2 + '" y2="' + (y + 16) + '" class="az-sf"/>');
+  // Benennung (groß)
+  k(c1 + 2, y + 5, "BENENNUNG");
+  v(c1 + 2, y + 13, c.titel || "—");
+  k(c1 + 2, y + 21, "ALLGEMEINTOLERANZ");
+  v(c1 + 2, y + 28, "ISO 2768-" + (c.toleranz || "m"));
+  // Mittlere Spalte: Werkstoff / Maßstab
+  e.push('<line x1="' + c2 + '" y1="' + (y + 16) + '" x2="' + c3 + '" y2="' + (y + 16) + '" class="az-sf"/>');
+  k(c2 + 2, y + 5, "WERKSTOFF"); v(c2 + 2, y + 13, c.werkstoff || "—");
+  k(c2 + 2, y + 21, "MASSSTAB"); v(c2 + 2, y + 28, this.massstabLabel);
+  // Rechte Spalte: Zeichnungsnr / Datum / Projektionssymbol (je 10 mm Zeile)
+  e.push('<line x1="' + c3 + '" y1="' + (y + 10) + '" x2="' + (x + w) + '" y2="' + (y + 10) + '" class="az-sf"/>');
+  e.push('<line x1="' + c3 + '" y1="' + (y + 20) + '" x2="' + (x + w) + '" y2="' + (y + 20) + '" class="az-sf"/>');
+  k(c3 + 2, y + 4, "ZEICHN.-NR"); v(c3 + 2, y + 8.6, c.nummer || "—");
+  k(c3 + 2, y + 14, "DATUM"); v(c3 + 2, y + 18.6, c.datum || "__.__.____");
+  // Projektionssymbol (1. Winkel), zentriert in der unteren rechten Zelle
+  this._projektion(c3 + 5, y + 25, e);
+  return e.join("");
+};
+
+AZ.Blatt.prototype._projektion = function (px, py, e) {
+  // vereinfachtes Symbol Projektionsmethode 1 (europäisch)
+  e.push('<g transform="translate(' + px + ',' + py + ')">' +
+    '<path d="M0,-4 L8,-2 L8,2 L0,4 Z" class="az-thin" fill="none"/>' +
+    '<circle cx="18" cy="0" r="2.4" class="az-thin" fill="none"/>' +
+    '<circle cx="18" cy="0" r="4" class="az-thin" fill="none"/>' +
+    '<line x1="8" y1="0" x2="14" y2="0" class="az-thin"/>' +
+    '</g>');
+};
+
+AZ.Blatt.prototype.svg = function () {
+  var vb = "0 0 " + this.W + " " + this.H;
+  var frameX = this.mL, frameY = this.mT,
+    frameW = this.W - this.mL - this.mR, frameH = this.H - this.mT - this.mB;
+  var out = '<svg class="az-blatt" viewBox="' + vb + '" role="img" ' +
+    'aria-label="' + AZ.esc(this.cfg.titel || "Technische Zeichnung") + '" ' +
+    'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+  out += AZ._defs(this.uid);
+  out += AZ._style();
+  // Blattfläche + Rahmen
+  out += '<rect x="0" y="0" width="' + this.W + '" height="' + this.H + '" fill="#fdfdfb"/>';
+  out += '<rect x="' + frameX + '" y="' + frameY + '" width="' + frameW + '" height="' + frameH + '" class="az-frame"/>';
+  // Zeichnungsinhalt
+  out += '<g marker-mid="">' + this.body.join("") + '</g>';
+  // Schriftfeld
+  out += this._schriftfeld();
+  out += "</svg>";
+  return out;
+};
+
+/* ----------------------------------------------------------------------------
+   AZ.Pen — zeichnet in Welt-mm, transformiert in Blatt-mm (Skalierung s)
+   ---------------------------------------------------------------------------*/
+AZ.Pen = function (blatt, s, ox, oy) {
+  this.b = blatt; this.s = s; this.ox = ox; this.oy = oy;
+};
+AZ.Pen.prototype.X = function (x) { return +(this.ox + x * this.s).toFixed(3); };
+AZ.Pen.prototype.Y = function (y) { return +(this.oy + y * this.s).toFixed(3); };
+AZ.Pen.prototype._p = function (svg) { this.b.push(svg); };
+
+AZ.Pen.prototype.rect = function (x, y, w, h, cls) {
+  cls = cls || "az-vis";
+  this._p('<rect x="' + this.X(x) + '" y="' + this.Y(y) + '" width="' + (w * this.s).toFixed(3) +
+    '" height="' + (h * this.s).toFixed(3) + '" class="' + cls + '" fill="none"/>');
+};
+AZ.Pen.prototype.line = function (x1, y1, x2, y2, cls) {
+  cls = cls || "az-vis";
+  this._p('<line x1="' + this.X(x1) + '" y1="' + this.Y(y1) + '" x2="' + this.X(x2) + '" y2="' + this.Y(y2) + '" class="' + cls + '"/>');
+};
+AZ.Pen.prototype.circle = function (cx, cy, r, cls) {
+  cls = cls || "az-vis";
+  this._p('<circle cx="' + this.X(cx) + '" cy="' + this.Y(cy) + '" r="' + (r * this.s).toFixed(3) + '" class="' + cls + '" fill="none"/>');
+};
+AZ.Pen.prototype.center = function (x1, y1, x2, y2) { this.line(x1, y1, x2, y2, "az-center"); };
+AZ.Pen.prototype.hidden = function (x1, y1, x2, y2) { this.line(x1, y1, x2, y2, "az-hidden"); };
+AZ.Pen.prototype.fill = function (x, y, w, h) {
+  this._p('<rect x="' + this.X(x) + '" y="' + this.Y(y) + '" width="' + (w * this.s).toFixed(3) +
+    '" height="' + (h * this.s).toFixed(3) + '" class="az-part"/>');
+};
+AZ.Pen.prototype.text = function (x, y, t, cls) {
+  cls = cls || "az-dimtx";
+  this._p('<text x="' + this.X(x) + '" y="' + this.Y(y) + '" class="' + cls + '">' + AZ.esc(t) + '</text>');
+};
+
+/* Bemaßung: Maßhilfslinien (schmal, Überstand), Maßlinie mit Pfeilen, Maßzahl
+   dimH(x1,x2, yMass, yKante, opts) — horizontal, Maß = |x2-x1| mm             */
+AZ.Pen.prototype.dimH = function (x1, x2, yMass, yKante, opts) {
+  opts = opts || {};
+  var uid = this.b.uid, over = 1.5; // Überstand Maßhilfslinie mm
+  var dir = (yMass < yKante) ? -1 : 1;
+  this._p('<line x1="' + this.X(x1) + '" y1="' + this.Y(yKante) + '" x2="' + this.X(x1) + '" y2="' + this.Y(yMass + dir * over) + '" class="az-thin"/>');
+  this._p('<line x1="' + this.X(x2) + '" y1="' + this.Y(yKante) + '" x2="' + this.X(x2) + '" y2="' + this.Y(yMass + dir * over) + '" class="az-thin"/>');
+  this._p('<line x1="' + this.X(x1) + '" y1="' + this.Y(yMass) + '" x2="' + this.X(x2) + '" y2="' + this.Y(yMass) +
+    '" class="az-thin" marker-start="url(#' + uid + 'as)" marker-end="url(#' + uid + 'ae)"/>');
+  var t = (opts.text != null) ? opts.text : String(Math.round(Math.abs(x2 - x1)));
+  var mx = (x1 + x2) / 2, ty = yMass + dir * 1.4;
+  this._p('<text x="' + this.X(mx) + '" y="' + this.Y(ty) + '" class="' + (opts.cls || 'az-dimtx') + '" text-anchor="middle">' + AZ.esc(t) + '</text>');
+};
+AZ.Pen.prototype.dimV = function (y1, y2, xMass, xKante, opts) {
+  opts = opts || {};
+  var uid = this.b.uid, over = 1.5;
+  var dir = (xMass < xKante) ? -1 : 1;
+  this._p('<line x1="' + this.X(xKante) + '" y1="' + this.Y(y1) + '" x2="' + this.X(xMass + dir * over) + '" y2="' + this.Y(y1) + '" class="az-thin"/>');
+  this._p('<line x1="' + this.X(xKante) + '" y1="' + this.Y(y2) + '" x2="' + this.X(xMass + dir * over) + '" y2="' + this.Y(y2) + '" class="az-thin"/>');
+  this._p('<line x1="' + this.X(xMass) + '" y1="' + this.Y(y1) + '" x2="' + this.X(xMass) + '" y2="' + this.Y(y2) +
+    '" class="az-thin" marker-start="url(#' + uid + 'as)" marker-end="url(#' + uid + 'ae)"/>');
+  var t = (opts.text != null) ? opts.text : String(Math.round(Math.abs(y2 - y1)));
+  var my = (y1 + y2) / 2, tx = this.X(xMass + dir * 1.6), tyy = this.Y(my);
+  this._p('<text x="' + tx + '" y="' + tyy + '" class="' + (opts.cls || 'az-dimtx') + '" text-anchor="middle" transform="rotate(-90 ' + tx + ' ' + tyy + ')">' + AZ.esc(t) + '</text>');
+};
+/* Durchmesser-Bemaßung als Hinweislinie: ⌀d  */
+AZ.Pen.prototype.dimDia = function (cx, cy, r, angDeg, d, opts) {
+  opts = opts || {};
+  var a = angDeg * Math.PI / 180;
+  var x1 = cx + r * Math.cos(a), y1 = cy + r * Math.sin(a);
+  var x2 = cx + (r + 8) * Math.cos(a), y2 = cy + (r + 8) * Math.sin(a);
+  this.line(x1, y1, x2, y2, "az-thin");
+  var t = (opts.text != null) ? opts.text : ("⌀" + d);
+  this._p('<text x="' + this.X(x2 + 1) + '" y="' + this.Y(y2) + '" class="' + (opts.cls || 'az-dimtx') + '">' + AZ.esc(t) + '</text>');
+};
+
+/* Innengewinde in Vorderansicht (DIN ISO 6410):
+   Kernloch = breiter Vollkreis, Gewinde-Nenn-⌀ = schmaler 3/4-Kreis */
+AZ.Pen.prototype.gewindeFront = function (cx, cy, dNom, core) {
+  this.circle(cx, cy, core / 2, "az-vis");           // Kernloch (breit)
+  var r = (dNom / 2) * this.s, X = this.X(cx), Y = this.Y(cy);
+  var a0 = Math.PI * 0.13, a1 = Math.PI * 1.87;      // Lücke oben rechts
+  var x0 = (X + r * Math.cos(a0)).toFixed(2), y0 = (Y + r * Math.sin(a0)).toFixed(2);
+  var x1 = (X + r * Math.cos(a1)).toFixed(2), y1 = (Y + r * Math.sin(a1)).toFixed(2);
+  this._p('<path d="M' + x0 + ',' + y0 + ' A' + r.toFixed(2) + ',' + r.toFixed(2) +
+    ' 0 1 1 ' + x1 + ',' + y1 + '" class="az-thin" fill="none"/>');
+};
+
+/* Schnittschraffur (45°, schmal) innerhalb einer Polygon-Kontur, abzügl. Löcher.
+   points/holes: Arrays von [x,y] in Welt-mm (Löcher = Polygon-Arrays) */
+AZ.Pen.prototype.hatchPoly = function (points, holes, spacing) {
+  spacing = spacing || 2.4;
+  var self = this, uid = this.b.uid + "h" + (this.b._hc = (this.b._hc || 0) + 1);
+  function poly(pts) {
+    return "M" + pts.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  }
+  var d = poly(points);
+  (holes || []).forEach(function (ho) { d += " " + poly(ho); });
+  this._p('<clipPath id="' + uid + '"><path d="' + d + '" clip-rule="evenodd"/></clipPath>');
+  var xs = points.map(function (p) { return p[0]; }), ys = points.map(function (p) { return p[1]; });
+  var minx = Math.min.apply(0, xs), maxx = Math.max.apply(0, xs), miny = Math.min.apply(0, ys), maxy = Math.max.apply(0, ys);
+  var X0 = this.X(minx), Y0 = this.Y(miny), W = (maxx - minx) * this.s, H = (maxy - miny) * this.s;
+  var step = spacing * this.s, lines = "";
+  for (var off = -H; off < W; off += step) {
+    lines += '<line x1="' + (X0 + off).toFixed(2) + '" y1="' + Y0.toFixed(2) +
+      '" x2="' + (X0 + off + H).toFixed(2) + '" y2="' + (Y0 + H).toFixed(2) + '" class="az-thin"/>';
+  }
+  this._p('<g clip-path="url(#' + uid + ')">' + lines + "</g>");
+};
+
+/* Polygonzug (Kontur) zeichnen */
+AZ.Pen.prototype.poly = function (points, cls) {
+  cls = cls || "az-vis";
+  var self = this;
+  var d = "M" + points.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  this._p('<path d="' + d + '" class="' + cls + '" fill="none"/>');
+};
+
+/* Oberflächenangabe DIN EN ISO 21920 (Grundsymbol + Ra), feste mm-Größe */
+AZ.Pen.prototype.oberflaeche = function (x, y, ra) {
+  var X = this.X(x), Y = this.Y(y);
+  this._p('<path d="M' + (X - 2.2) + ',' + Y + ' L' + (X - 0.6) + ',' + (Y + 2.4) +
+    ' L' + (X + 2.6) + ',' + (Y - 3.4) + '" class="az-vis" fill="none"/>');
+  this._p('<text x="' + (X - 2) + '" y="' + (Y - 1.2) + '" class="az-note">Ra ' + AZ.esc(ra) + '</text>');
+};
+
+/* Schnittverlaufslinie (Strichpunkt breit an Enden) mit Pfeilen + Buchstaben */
+AZ.Pen.prototype.schnittlinie = function (x1, x2, y, letter) {
+  var uid = this.b.uid;
+  this.line(x1, y, x2, y, "az-center");
+  // Pfeile nach unten (Blickrichtung) + Buchstaben an beiden Enden
+  this._p('<line x1="' + this.X(x1) + '" y1="' + this.Y(y) + '" x2="' + this.X(x1) + '" y2="' + this.Y(y + 5) +
+    '" class="az-vis" marker-end="url(#' + uid + 'ae)"/>');
+  this._p('<line x1="' + this.X(x2) + '" y1="' + this.Y(y) + '" x2="' + this.X(x2) + '" y2="' + this.Y(y + 5) +
+    '" class="az-vis" marker-end="url(#' + uid + 'ae)"/>');
+  this.text(x1 - 1, y - 1.5, letter, "az-lblb");
+  this.text(x2 + 1.5, y - 1.5, letter, "az-lblb");
+};
+
+/* ---- gemeinsame Defs / Style (in jedes SVG eingebettet -> druckt s/w) ---- */
+AZ._defs = function (uid) {
+  // Maßpfeile ~3 mm (userSpaceOnUse = mm, da viewBox in mm)
+  return '<defs>' +
+    '<marker id="' + uid + 'ae" markerWidth="3.2" markerHeight="2.4" refX="3" refY="1.2" orient="auto" markerUnits="userSpaceOnUse">' +
+    '<path d="M0,0.3 L3,1.2 L0,2.1 Z" fill="#1a1a1a"/></marker>' +
+    '<marker id="' + uid + 'as" markerWidth="3.2" markerHeight="2.4" refX="0.2" refY="1.2" orient="auto" markerUnits="userSpaceOnUse">' +
+    '<path d="M3.2,0.3 L0.2,1.2 L3.2,2.1 Z" fill="#1a1a1a"/></marker>' +
+    '</defs>';
+};
+AZ._style = function () {
+  return '<style>' +
+    '.az-blatt text{font-family:ui-monospace,"Cascadia Code",Menlo,Consolas,monospace}' +
+    '.az-frame{fill:none;stroke:#1a1a1a;stroke-width:0.5}' +
+    '.az-vis{stroke:#1a1a1a;stroke-width:0.5;fill:none;stroke-linecap:round;stroke-linejoin:round}' +
+    '.az-thin{stroke:#1a1a1a;stroke-width:0.25;fill:none}' +
+    '.az-center{stroke:#1a1a1a;stroke-width:0.25;fill:none;stroke-dasharray:6 1.2 0.8 1.2}' +
+    '.az-hidden{stroke:#1a1a1a;stroke-width:0.35;fill:none;stroke-dasharray:2.5 1.2}' +
+    '.az-part{fill:#eceae2;stroke:none}' +
+    '.az-dimtx{fill:#1a1a1a;font-size:3.2px;font-weight:600}' +
+    '.az-note{fill:#1a1a1a;font-size:3px}' +
+    '.az-lblb{fill:#1a1a1a;font-size:4px;font-weight:800}' +
+    '.az-todo{fill:#E4531D;font-size:4px;font-weight:800}' +
+    '.az-sf{fill:none;stroke:#1a1a1a;stroke-width:0.35}' +
+    '.az-sfk{fill:#666;font-size:2.4px;letter-spacing:.03em}' +
+    '.az-sfv{fill:#1a1a1a;font-size:3.4px;font-weight:700}' +
+    '</style>';
+};
+
+AZ.esc = function (s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+};
+
+
+/* ============================================================================
+   Modul-Inhalt: Arbeits- & Gesundheitsschutz, Umweltschutz
+   Rahmenplan: "Sicherheit u. Gesundheitsschutz bei der Arbeit" (durchgängig)
+   Berufsschule: bezieht sich u. a. auf Lernfeld 3 (sicherheitstechnische Aspekte)
+   Grundlagen: DIN EN ISO 7010 (Sicherheitszeichen), ArbSchG §5 (Gefährdungs-
+   beurteilung, TOP-Prinzip), DGUV. Sachlich belegt.
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+/* Sicherheitszeichen-Kategorien (Form + Sicherheitsfarbe nach ISO 3864/7010) */
+function azSignChip(kind) {
+  var s = { W: "#c8161d", B: "#005387", Y: "#f6c700", G: "#2e7d32" };
+  switch (kind) {
+    case "verbot": return '<svg viewBox="0 0 40 40" class="sign"><circle cx="20" cy="20" r="16" fill="#fff" stroke="' + s.W + '" stroke-width="4"/><line x1="9" y1="31" x2="31" y2="9" stroke="' + s.W + '" stroke-width="4"/></svg>';
+    case "gebot": return '<svg viewBox="0 0 40 40" class="sign"><circle cx="20" cy="20" r="18" fill="' + s.B + '"/><circle cx="20" cy="13" r="4" fill="#fff"/><rect x="16" y="18" width="8" height="12" rx="2" fill="#fff"/></svg>';
+    case "warnung": return '<svg viewBox="0 0 40 40" class="sign"><path d="M20 4 L37 34 L3 34 Z" fill="' + s.Y + '" stroke="#111" stroke-width="2.5"/><rect x="18.5" y="15" width="3" height="10" fill="#111"/><rect x="18.5" y="27" width="3" height="3" fill="#111"/></svg>';
+    case "rettung": return '<svg viewBox="0 0 40 40" class="sign"><rect x="3" y="3" width="34" height="34" rx="2" fill="' + s.G + '"/><path d="M12 20 l6 6 l10 -12" stroke="#fff" stroke-width="4" fill="none"/></svg>';
+    case "brand": return '<svg viewBox="0 0 40 40" class="sign"><rect x="3" y="3" width="34" height="34" rx="2" fill="' + s.W + '"/><path d="M20 8 c4 6 8 8 8 14 a8 8 0 0 1 -16 0 c0 -4 4 -6 8 -14 z" fill="#fff"/></svg>';
+  }
+  return "";
+}
+
+AZ_CONTENT["m1-arbeitssicherheit"] = {
+  intro: "Sicherheit ist die Grundlage jeder Tätigkeit in der Werkstatt und begleitet die " +
+    "gesamte Ausbildung. Du lernst Sicherheitszeichen zu lesen (DIN EN ISO 7010), die " +
+    "PSA richtig einzusetzen und Gefährdungen nach ArbSchG §5 zu beurteilen.",
+  bausteine: [
+    {
+      id: "as-aufgabe", typ: "aufgabe", titel: "Unterweisung: Sicher arbeiten von Anfang an", blattNr: "AS-A01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Grundkurs / durchgängig</span><span>Rahmenplan: Sicherheit u. Gesundheitsschutz</span><span>Bezug LF&nbsp;3</span></div>' +
+          '<h3>Warum zuerst?</h3>' +
+          '<p>Bevor du an Maschine oder Werkbank arbeitest, musst du Gefährdungen erkennen und die richtigen ' +
+          'Schutzmaßnahmen anwenden. Dieses Modul ist die Voraussetzung für alle weiteren Aufgaben.</p>' +
+          '<h3>Lernziel</h3>' +
+          '<ul class="ul"><li>Sicherheitszeichen nach ihrer Form &amp; Farbe deuten</li>' +
+          '<li>die passende persönliche Schutzausrüstung (PSA) auswählen</li>' +
+          '<li>eine einfache Gefährdungsbeurteilung nach dem TOP-Prinzip durchführen</li></ul>' +
+          '<h3>Ablauf</h3>' +
+          '<ol class="ol"><li><strong>Aufgabe erklärt</strong> — dieses Blatt</li>' +
+          '<li><strong>Theorie</strong> — Sicherheitszeichen, PSA, Gefährdungsbeurteilung (AS-T01)</li>' +
+          '<li><strong>Praxis</strong> — Sicherheits-Checkliste am Arbeitsplatz (AS-S01)</li></ol>';
+      },
+    },
+    {
+      id: "as-theorie", typ: "theorie", titel: "Sicherheitszeichen · PSA · Gefährdungsbeurteilung", blattNr: "AS-T01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Theorie-Arbeitsblatt</span><span>DIN EN ISO 7010 · ArbSchG §5</span><span>Lösung: AS-L01</span></div>' +
+          '<h3>1. Sicherheitszeichen nach Form und Farbe (DIN EN ISO 7010 / ISO 3864)</h3>' +
+          '<div class="sign-grid">' +
+          '<div class="sign-card">' + azSignChip("verbot") + '<div><strong>Verbot</strong><small>Kreis, rot, Diagonalbalken</small></div></div>' +
+          '<div class="sign-card">' + azSignChip("gebot") + '<div><strong>Gebot</strong><small>Kreis, blau</small></div></div>' +
+          '<div class="sign-card">' + azSignChip("warnung") + '<div><strong>Warnung</strong><small>Dreieck, gelb, schwarzer Rand</small></div></div>' +
+          '<div class="sign-card">' + azSignChip("rettung") + '<div><strong>Rettung</strong><small>Quadrat, grün</small></div></div>' +
+          '<div class="sign-card">' + azSignChip("brand") + '<div><strong>Brandschutz</strong><small>Quadrat, rot</small></div></div>' +
+          '</div>' +
+          '<p class="frage">Frage 1: Welche Form und Farbe hat ein <em>Gebotszeichen</em> (z. B. „Augenschutz benutzen")? ____________________</p>' +
+          '<h3>2. Persönliche Schutzausrüstung (PSA)</h3>' +
+          '<p>Die PSA schützt dort, wo technische und organisatorische Maßnahmen nicht ausreichen. Typisch in der ' +
+          'Metallwerkstatt: <strong>Schutzbrille, Sicherheitsschuhe, Gehörschutz</strong>, ggf. Handschuhe ' +
+          '(<span class="chk-hint">Achtung: an rotierenden Maschinen wie der Bohrmaschine keine Handschuhe!</span>).</p>' +
+          '<p class="frage">Frage 2: Warum trägst du an der Bohrmaschine keine Handschuhe? ____________________________________</p>' +
+          '<h3>3. Gefährdungsbeurteilung (ArbSchG §5) — TOP-Prinzip</h3>' +
+          '<p>Schutzmaßnahmen werden in dieser Rangfolge festgelegt:</p>' +
+          '<table class="tab"><thead><tr><th>Rang</th><th>Art</th><th>Beispiel</th></tr></thead><tbody>' +
+          '<tr><td>T</td><td><strong>Technisch</strong></td><td>Schutzabdeckung, Absaugung</td></tr>' +
+          '<tr><td>O</td><td><strong>Organisatorisch</strong></td><td>Unterweisung, Betriebsanweisung</td></tr>' +
+          '<tr><td>P</td><td><strong>Personenbezogen</strong></td><td>PSA (Brille, Schuhe)</td></tr></tbody></table>' +
+          '<p class="frage">Frage 3: In welcher Reihenfolge werden Maßnahmen bevorzugt? ____ vor ____ vor ____</p>';
+      },
+    },
+    {
+      id: "as-check", typ: "sicherheit", titel: "Sicherheits-Checkliste am Arbeitsplatz", blattNr: "AS-S01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Praxis / Sicherheit</span><span>vor Arbeitsbeginn ausfüllen</span></div>' +
+          '<h3>Vor dem Arbeiten prüfen</h3>' +
+          '<div class="chk"><span class="box"></span>PSA vollständig: Schutzbrille, Sicherheitsschuhe, Gehörschutz</div>' +
+          '<div class="chk"><span class="box"></span>Not-Aus-Schalter / Standort bekannt</div>' +
+          '<div class="chk"><span class="box"></span>Maschine sauber, Schutzeinrichtungen vorhanden &amp; wirksam</div>' +
+          '<div class="chk"><span class="box"></span>Arbeitsplatz aufgeräumt, keine Stolperstellen</div>' +
+          '<div class="chk"><span class="box"></span>Fluchtwege &amp; Feuerlöscher frei zugänglich</div>' +
+          '<h3>Gefährdung notieren &amp; Maßnahme (TOP)</h3>' +
+          '<table class="tab"><thead><tr><th>Gefährdung</th><th>Maßnahme</th><th>Rang (T/O/P)</th></tr></thead><tbody>' +
+          '<tr><td>________________</td><td>________________</td><td>____</td></tr>' +
+          '<tr><td>________________</td><td>________________</td><td>____</td></tr></tbody></table>' +
+          '<div class="unterschrift"><div>Azubi: __________________</div><div>Ausbilder: __________________</div><div>Datum: ____________</div></div>';
+      },
+    },
+    {
+      id: "as-loesung", typ: "loesung", titel: "Lösungsheft: Arbeitssicherheit", blattNr: "AS-L01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta ok"><span>Lösungsheft</span><span>zu AS-T01</span><span>Musterlösung</span></div>' +
+          '<ol class="ol">' +
+          '<li><strong>Frage 1:</strong> Gebotszeichen = <strong>runder Kreis, blau</strong>, weißes Symbol (z. B. Schutzbrille).</li>' +
+          '<li><strong>Frage 2:</strong> Handschuhe können vom rotierenden Bohrer erfasst und die Hand eingezogen werden — hohe Verletzungsgefahr.</li>' +
+          '<li><strong>Frage 3:</strong> <strong>T</strong>echnisch vor <strong>O</strong>rganisatorisch vor <strong>P</strong>ersonenbezogen (TOP-Prinzip, ArbSchG §5).</li>' +
+          '</ol>' +
+          '<p class="chk-hint">Konkrete betriebliche Vorschriften und Grenzwerte ergänzt die Ausbildung mit den gültigen DGUV-Regeln / Betriebsanweisungen (fachlich prüfen).</p>';
+      },
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Modul-Inhalt: Grundkurs Metall (Manuelles & maschinelles Bearbeiten)
+   Rahmenplan: "Manuelles u. maschinelles Spanen, Trennen und Umformen" (11 Wo.)
+   Berufsschule: Lernfeld 2 "Herstellen mechanischer Teilsysteme"
+   Werkstück: Halteplatte 90 x 50 x 15, Bohrung ⌀12 H9, Gewinde M8, Fase 2x45°.
+   Alle Werte belegt: DIN 13 (Kernloch), DIN EN ISO 286 (H9), DIN ISO 2768-1.
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+/* --- Echte Werkstattzeichnung mit Schnitt A–A --- */
+function azHalteplatte(modus) {
+  var voll = (modus === "fertig");
+  var b = new AZ.Blatt({
+    format: "A4quer", titel: "Halteplatte", werkstoff: "S235JR",
+    nummer: "GM-101", toleranz: "m", ersteller: "Azubi",
+  });
+  var world = { x: -16, y: -18, w: 120, h: 112 };
+  b.zeichnung(world, function (p) {
+    /* ---------------- Vorderansicht ---------------- */
+    p.fill(0, 0, 90, 50);
+    p.rect(0, 0, 90, 50, "az-vis");
+    p.circle(25, 25, 6, "az-vis");                 // Bohrung ⌀12 H9
+    if (voll) p.gewindeFront(65, 25, 8, 6.8);      // Gewinde M8
+    else p.text(64.5, 26.5, "?", "az-todo");
+    p.center(25, -5, 25, 55); p.center(65, -5, 65, 55); p.center(-5, 25, 95, 25);
+    if (voll) p.schnittlinie(-6, 96, 25, "A");     // Schnittverlauf A–A
+
+    /* ---------------- Schnitt A–A (unter der Vorderansicht) ---------------- */
+    if (voll) {
+      var outline = [[0, 67], [2, 65], [88, 65], [90, 67], [90, 80], [0, 80]]; // Fase 2x45° oben
+      var bore = [[19, 65], [31, 65], [31, 80], [19, 80]];       // ⌀12 Durchgang
+      var thr = [[61.6, 65], [68.4, 65], [68.4, 80], [61.6, 80]]; // M8 Kernloch ⌀6,8
+      p.hatchPoly(outline, [bore, thr], 2.4);
+      p.poly(outline, "az-vis");
+      p.line(19, 65, 19, 80, "az-vis"); p.line(31, 65, 31, 80, "az-vis");   // Bohrung
+      p.line(61.6, 65, 61.6, 80, "az-vis"); p.line(68.4, 65, 68.4, 80, "az-vis"); // Gewindekern (breit)
+      p.line(61, 65, 61, 80, "az-thin"); p.line(69, 65, 69, 80, "az-thin");       // Nenn-⌀ (schmal)
+      p.center(25, 63, 25, 82); p.center(65, 63, 65, 82);
+      p.text(38, 90, "SCHNITT A–A", "az-lblb");
+    } else {
+      p._p('<rect x="' + p.X(0) + '" y="' + p.Y(65) + '" width="' + (90 * p.s).toFixed(2) +
+        '" height="' + (15 * p.s).toFixed(2) + '" class="az-thin" stroke-dasharray="1.5 1.5" fill="none"/>');
+      p.text(34, 74, "Schnitt A–A ergänzen", "az-note");
+    }
+
+    /* ---------------- Bemaßung DIN ISO 129-1 ---------------- */
+    if (voll) {
+      p.dimH(0, 90, -16, 0);                     // 90 Breite
+      p.dimH(0, 25, -8, 0);                      // 25 Position Bohrung
+      p.dimH(25, 65, -8, 0);                     // 40 Lochabstand
+      p.dimV(0, 50, -14, 0);                     // 50 Höhe
+      p.dimV(65, 80, 96, 90);                    // 15 Dicke (im Schnitt)
+      p.dimDia(25, 25, 6, -132, "12", { text: "⌀12 H9" });
+      p.dimDia(65, 25, 4, -48, null, { text: "M8" });
+      // Fase 2x45° (Hinweis am Schnitt)
+      p.line(2, 65, -6, 61, "az-thin"); p.text(-14, 60.5, "2×45°", "az-dimtx");
+      // Oberflächenangabe Ra 3,2 an Vorderseite
+      p.oberflaeche(80, 50, "3,2");
+    } else {
+      p.dimH(0, 90, -16, 0, { text: "?", cls: "az-todo" });
+      p.dimV(0, 50, -14, 0, { text: "?", cls: "az-todo" });
+      p.dimDia(25, 25, 6, -132, null, { text: "⌀?", cls: "az-todo" });
+    }
+  });
+  return b.svg();
+}
+
+AZ_CONTENT["m5-grundkurs-metall"] = {
+  intro: "Im Grundkurs Metall fertigst du nach echter technischer Zeichnung die Halteplatte und " +
+    "lernst Feilen, Sägen, Bohren, Senken und Gewindeschneiden. Die Zeichnung enthält eine " +
+    "Passbohrung (⌀12 H9), ein Gewinde (M8), eine Fase (2×45°) und einen Schnitt A–A. " +
+    "Grundlage: Lernfeld 2, Toleranzen nach DIN ISO 2768-1 und DIN EN ISO 286.",
+  bausteine: [
+    {
+      id: "gm-aufgabe", typ: "aufgabe", titel: "Auftrag: Halteplatte herstellen", blattNr: "GM-A01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Zeitrichtwert: 3 Unterrichtstage</span><span>Rahmenplan: manuelles/maschinelles Bearbeiten</span><span>Lernfeld&nbsp;2</span></div>' +
+          '<h3>Die Aufgabe</h3>' +
+          '<p>Aus einem Rohteil (Flachstahl 95 × 55 × 18 mm, S235JR) ist die <strong>Halteplatte</strong> nach Zeichnung ' +
+          '<em>GM-101</em> herzustellen: auf Endmaß 90 × 50 × 15 feilen, Passbohrung <strong>⌀12 H9</strong> und ' +
+          'Gewinde <strong>M8</strong> setzen, Kanten mit Fase <strong>2×45°</strong> brechen.</p>' +
+          '<h3>Lernziel</h3>' +
+          '<ul class="ul"><li>eine technische Zeichnung mit Schnitt, Passung und Gewinde lesen</li>' +
+          '<li>anreißen, körnen, feilen, bohren, senken, Gewinde schneiden, entgraten</li>' +
+          '<li>Maßhaltigkeit nach <strong>DIN ISO 2768-m</strong> und Passung <strong>H9</strong> prüfen</li></ul>' +
+          '<h3>Ablauf</h3>' +
+          '<ol class="ol"><li><strong>Aufgabe erklärt</strong> — dieses Blatt</li>' +
+          '<li><strong>Theorie</strong> — Feilen/Bohren/Gewinde, Passung, Oberfläche (GM-T01)</li>' +
+          '<li><strong>Praxis</strong> — fertigen &amp; prüfen (GM-P01)</li></ol>';
+      },
+    },
+    {
+      id: "gm-theorie", typ: "theorie", titel: "Grundlagen: Feilen · Bohren · Gewinde · Passung · Oberfläche", blattNr: "GM-T01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Theorie-Arbeitsblatt</span><span>zu Auftrag GM-A01</span><span>Lösung: GM-L01</span></div>' +
+          '<h3>1. Feilen</h3>' +
+          '<p>Schrupphieb für groben Abtrag, Schlichthieb für die Endbearbeitung; Ebenheit im Kreuzhieb prüfen.</p>' +
+          '<p class="frage">Frage 1: Womit prüfst du, ob die gefeilte Fläche eben ist? _______________________________</p>' +
+          '<h3>2. Sägen</h3>' +
+          '<p>Faustregel: mindestens <strong>3 Zähne</strong> gleichzeitig im Eingriff, sonst reißt der Zahn aus.</p>' +
+          '<p class="frage">Frage 2: Warum mindestens 3 Zähne im Eingriff? _______________________________</p>' +
+          '<h3>3. Bohren — Drehzahl berechnen</h3>' +
+          '<p class="formel">n = (v<sub>c</sub> · 1000) / (π · d)&nbsp;&nbsp;[min<sup>-1</sup>]</p>' +
+          '<p>Richtwert HSS in S235: v<sub>c</sub> ≈ 35 m/min <span class="chk-hint">(Richtwert — Tabellenbuch prüfen)</span>.</p>' +
+          '<p class="frage">Frage 3: Berechne n für die Bohrung ⌀12 mm bei v<sub>c</sub> = 35 m/min. n = __________ min<sup>-1</sup></p>' +
+          '<h3>4. Gewinde — Kernlochbohrer (metrisches ISO-Regelgewinde, DIN 13)</h3>' +
+          '<table class="tab"><thead><tr><th>Gewinde</th><th>Steigung P (mm)</th><th>Kernloch-⌀ (mm)</th></tr></thead><tbody>' +
+          '<tr><td>M4</td><td>0,70</td><td>3,3</td></tr><tr><td>M5</td><td>0,80</td><td>4,2</td></tr>' +
+          '<tr><td>M6</td><td>1,00</td><td>5,0</td></tr><tr><td><strong>M8</strong></td><td>1,25</td><td><strong>6,8</strong></td></tr>' +
+          '<tr><td>M10</td><td>1,50</td><td>8,5</td></tr></tbody></table>' +
+          '<p class="frage">Frage 4: Welchen Kernloch-⌀ bohrst du für das Gewinde M8? __________ mm</p>' +
+          '<h3>5. Passung — ⌀12 H9 (DIN EN ISO 286)</h3>' +
+          '<p>Das Toleranzfeld <strong>H</strong> hat das untere Abmaß <strong>0</strong>; die Qualität <strong>9 (IT9)</strong> ' +
+          'beträgt für 10–18 mm <strong>43 µm</strong>. Damit gilt: ⌀12 H9 = <strong>+0,043 / 0 mm</strong>.</p>' +
+          '<p class="frage">Frage 5: Welche Grenzabmaße hat ⌀12 H9? oberes: __________ &nbsp; unteres: __________</p>' +
+          '<h3>6. Oberfläche &amp; Fase</h3>' +
+          '<p><strong>Ra 3,2</strong> = arithmetischer Mittenrauwert in µm (DIN EN ISO 21920). ' +
+          '<strong>2×45°</strong> = gebrochene Kante, 2 mm Fasenbreite unter 45°.</p>' +
+          '<p class="frage">Frage 6: Was bedeutet die Angabe „Ra 3,2"? _______________________________</p>';
+      },
+    },
+    {
+      id: "gm-zeichnung", typ: "zeichnung", titel: "Technische Zeichnung: Halteplatte (Fertigzeichnung)", blattNr: "GM-101",
+      render: function () {
+        return '<div class="bl-meta"><span>Dreitafelprojektion + Schnitt A–A</span><span>DIN ISO 128 / 129 / 5455 / 286</span><span>Maßstab automatisch</span></div>' +
+          '<div class="zeichnung-halter">' + azHalteplatte("fertig") + '</div>' +
+          '<p class="chk-hint">Reale Maße 90 × 50 × 15 mm · Bohrung ⌀12 H9 (+0,043/0) · Gewinde M8 · Fase 2×45° · Ra 3,2 · Allgemeintoleranz ISO 2768-m · S235JR.</p>';
+      },
+    },
+    {
+      id: "gm-zeichnung-erg", typ: "zeichnung", titel: "Zeichnung ergänzen (halbfertig)", blattNr: "GM-102",
+      render: function () {
+        return '<div class="bl-meta"><span>zum Ausdrucken &amp; Ergänzen</span><span>Selbstkontrolle: GM-101</span></div>' +
+          '<div class="zeichnung-halter">' + azHalteplatte("ergaenzen") + '</div>' +
+          '<p class="chk-hint">Aufgabe: fehlende <strong>Maße</strong> eintragen, <strong>Gewinde M8</strong> und <strong>Schnitt A–A</strong> ergänzen, ' +
+          'Passung &amp; Fase angeben und das <strong>Schriftfeld</strong> ausfüllen. Danach mit GM-101 vergleichen.</p>';
+      },
+    },
+    {
+      id: "gm-praxis", typ: "praxis", titel: "Praxis-Arbeitsauftrag: fertigen & prüfen", blattNr: "GM-P01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta"><span>Praxis</span><span>Werkbank</span><span>Abnahme: Ausbilder</span></div>' +
+          '<h3>Arbeitsschritte</h3>' +
+          '<div class="chk"><span class="box"></span>PSA anlegen, Arbeitsplatz &amp; Werkzeug vorbereiten</div>' +
+          '<div class="chk"><span class="box"></span>Rohteil nach Zeichnung anreißen und körnen (Lochmitten 25 / 65)</div>' +
+          '<div class="chk"><span class="box"></span>Außenmaße 90 × 50 auf Endmaß feilen, Dicke 15 prüfen</div>' +
+          '<div class="chk"><span class="box"></span>Kernloch ⌀6,8 bohren, Gewinde M8 schneiden (Schneideisen/Bohrer)</div>' +
+          '<div class="chk"><span class="box"></span>Passbohrung ⌀12 H9 bohren &amp; reiben, Kanten 2×45° brechen</div>' +
+          '<h3>Prüfmaße (Sollmaße mit Grenzabmaß)</h3>' +
+          '<table class="tab"><thead><tr><th>Maß</th><th>Sollmaß</th><th>Grenzabmaß</th><th>Prüfmittel</th><th>Ist</th><th>i.O.</th></tr></thead><tbody>' +
+          '<tr><td>Länge</td><td>90 mm</td><td>±0,3 (2768-m)</td><td>Messschieber</td><td>____</td><td>☐</td></tr>' +
+          '<tr><td>Breite</td><td>50 mm</td><td>±0,3 (2768-m)</td><td>Messschieber</td><td>____</td><td>☐</td></tr>' +
+          '<tr><td>Dicke</td><td>15 mm</td><td>±0,2 (2768-m)</td><td>Messschieber</td><td>____</td><td>☐</td></tr>' +
+          '<tr><td>Passbohrung</td><td>⌀12 H9</td><td>+0,043 / 0</td><td>Grenzlehrdorn</td><td>____</td><td>☐</td></tr>' +
+          '<tr><td>Gewinde</td><td>M8</td><td>—</td><td>Gewindelehrdorn</td><td>____</td><td>☐</td></tr></tbody></table>' +
+          '<p class="chk-hint">Grenzabmaße: ISO 2768-m (>6–30 → ±0,2 · >30–120 → ±0,3); ⌀12 H9 nach DIN EN ISO 286.</p>' +
+          '<div class="unterschrift"><div>Azubi: __________________</div><div>Ausbilder: __________________</div><div>Datum: ____________</div></div>';
+      },
+    },
+    {
+      id: "gm-loesung", typ: "loesung", titel: "Lösungsheft: Grundkurs Metall", blattNr: "GM-L01",
+      render: function () {
+        return '' +
+          '<div class="bl-meta ok"><span>Lösungsheft</span><span>zu GM-T01 / GM-101 / GM-P01</span><span>Musterlösung</span></div>' +
+          '<h3>Theorie (GM-T01)</h3>' +
+          '<ol class="ol">' +
+          '<li><strong>F1:</strong> Mit Haarlineal / Anschlagwinkel gegen das Licht (Lichtspalt) prüfen.</li>' +
+          '<li><strong>F2:</strong> Bei &lt; 3 Zähnen im Eingriff hakt der Zahn und bricht aus.</li>' +
+          '<li><strong>F3:</strong> n = (35 · 1000) / (π · 12) = 35000 / 37,70 ≈ <strong>928 min<sup>-1</sup></strong>.</li>' +
+          '<li><strong>F4:</strong> M8 → Kernloch-⌀ <strong>6,8 mm</strong> (DIN 13).</li>' +
+          '<li><strong>F5:</strong> ⌀12 H9 → oberes Abmaß <strong>+0,043 mm</strong>, unteres <strong>0 mm</strong> (Istmaß 12,000…12,043).</li>' +
+          '<li><strong>F6:</strong> Ra 3,2 = arithmetischer Mittenrauwert der Oberfläche = 3,2 µm (DIN EN ISO 21920).</li>' +
+          '</ol>' +
+          '<h3>Zeichnung (GM-101)</h3>' +
+          '<p>Maße 90 × 50 × 15; Bohrung ⌀12 H9 bei (25/25), Gewinde M8 bei (65/25), Lochabstand 40; Fase 2×45°; ' +
+          'Schnitt A–A zeigt Durchgangsbohrung und Gewinde im Kern. Projektion 1. Winkel, Allgemeintoleranz ISO 2768-m.</p>' +
+          '<h3>Praxis (GM-P01)</h3>' +
+          '<p>Werkstück i.O., wenn: 90 ±0,3 · 50 ±0,3 · 15 ±0,2 · ⌀12 in +0,043/0 (Grenzlehrdorn „Gut" geht, „Ausschuss" nicht) · ' +
+          'M8 mit Gewindelehrdorn geprüft · Kanten gratfrei &amp; gefast.</p>';
+      },
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Azubi Cockpit — App (Hash-Router + Views)
+   ==========================================================================*/
+(function () {
+  "use strict";
+  var C = window.AZ_CURRICULUM;
+  var CONTENT = window.AZ_CONTENT || {};
+  var app = document.getElementById("app");
+
+  /* ---------- Helpers ---------- */
+  function h(html) { return html; }
+  function findLj(n) { return C.lehrjahre.filter(function (l) { return l.nr == n; })[0]; }
+  function findModul(id) {
+    for (var i = 0; i < C.lehrjahre.length; i++) {
+      var m = C.lehrjahre[i].module.filter(function (x) { return x.id === id; })[0];
+      if (m) return { modul: m, lj: C.lehrjahre[i] };
+    }
+    return null;
+  }
+  function ljProgress(lj) {
+    var total = lj.module.length;
+    var done = lj.module.filter(function (m) { return m.status === "fertig"; }).length;
+    return { done: done, total: total, pct: total ? Math.round(done / total * 100) : 0 };
+  }
+  function lfById(nr) { return C.lernfelder.filter(function (x) { return x.nr == nr; })[0]; }
+
+  function setNav(active) {
+    document.querySelectorAll(".nav a").forEach(function (a) {
+      a.classList.toggle("active", a.getAttribute("data-k") === active);
+    });
+  }
+
+  /* ---------- View: Start ---------- */
+  function viewStart() {
+    setNav("start");
+    var flow = C.prinzip.map(function (p, i) {
+      var desc = ["Auftrag, Lernziel und Bezug zum Rahmenplan.",
+        "Arbeitsblätter, Zeichnungen &amp; Pläne — druckfertig, mit Lösung.",
+        "Auftrag an Werkbank/Anlage mit Prüfkriterien und Abnahme."][i];
+      return '<div class="step"><div class="num">SCHRITT 0' + (i + 1) + '</div><h3>' + p + '</h3><p>' + desc + '</p></div>';
+    }).join("");
+
+    var ljCards = C.lehrjahre.map(function (lj) {
+      var pr = ljProgress(lj);
+      return '<a class="lj-card" href="#/lj/' + lj.nr + '">' +
+        '<span class="lj">' + lj.titel.toUpperCase() + '</span>' +
+        '<h3>' + lj.untertitel + '</h3>' +
+        '<p>' + lj.module.length + ' Module · Lernfelder ' + lj.lernfelder.join(", ") + '</p>' +
+        '<div class="progress"><i style="width:' + pr.pct + '%"></i></div>' +
+        '<div class="pmeta"><span>' + pr.done + '/' + pr.total + ' Module fertig</span><span>' + (lj.pruefung || "") + '</span></div>' +
+        '</a>';
+    }).join("");
+
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<p class="eyebrow">Ausbildung ' + C.beruf + ' · ' + C.dauer + '</p>' +
+      '<h1>Azubi Cockpit</h1>' +
+      '<p class="lead">Dein Hauptquartier für die Ausbildung: strukturiert nach <strong>Ausbildungsrahmenplan (Betrieb)</strong> und <strong>Lernfeldern (Berufsschule)</strong>. Druckfertige Arbeitsblätter, echte technische Zeichnungen &amp; Pläne — jeweils mit Lösungsheft.</p>' +
+
+      '<section><p class="eyebrow">Das Prinzip</p><h2>Jede Aufgabe in drei Schritten</h2>' +
+      '<div class="flow">' + flow + '</div></section>' +
+
+      '<section><p class="eyebrow">Duale Ausbildung</p><h2>Zwei Lernorte, ein Plan</h2>' +
+      '<div class="duale">' +
+      '<div class="card"><small>Betrieb</small><h3>Ausbildungsrahmenplan</h3><p>Sachliche &amp; zeitliche Gliederung nach MechatronikerAusbV — mit Zeitrichtwerten in Wochen.</p></div>' +
+      '<div class="card"><small>Berufsschule</small><h3>13 Lernfelder (KMK)</h3><p>Kompetenzorientierter Rahmenlehrplan — jedes Modul ist einem Lernfeld zugeordnet.</p></div>' +
+      '</div></section>' +
+
+      '<section><p class="eyebrow">Der Fahrplan</p><h2>Vom 1. bis zum 3. Lehrjahr</h2>' +
+      '<div class="lj-grid">' + ljCards + '</div></section>' +
+
+      '<div class="footer">AZUBI COCKPIT · ' + C.beruf + ' · strukturiert nach Rahmenplan &amp; Lernfeldern · kein erfundener Inhalt</div>' +
+      '</div>'
+    );
+  }
+
+  /* ---------- View: Lehrjahr ---------- */
+  function viewLj(n) {
+    var lj = findLj(n);
+    if (!lj) return viewStart();
+    setNav("lj" + n);
+
+    var lfRows = lj.lernfelder.map(function (nr) {
+      var lf = lfById(nr);
+      return '<div class="lf-item"><span class="n">LF ' + lf.nr + '</span><span>' + lf.titel + '</span>' +
+        '<span class="h">' + (lf.stunden ? lf.stunden + " h" : "lt. KMK") + '</span></div>';
+    }).join("");
+
+    var rows = lj.module.map(function (m) {
+      var fertig = m.status === "fertig";
+      var href = fertig ? '#/modul/' + m.id : '#/modul/' + m.id;
+      return '<a class="mod-row' + (fertig ? "" : " locked") + '" href="' + href + '">' +
+        '<span class="badge ' + m.status + '">' + (fertig ? "fertig" : "Gerüst") + '</span>' +
+        '<div><div class="fach">' + m.fach + '</div><h3>' + m.titel + '</h3><div class="sub">' + m.beschreibung + '</div></div>' +
+        '<div class="weeks">' + m.wochen + '</div></a>';
+    }).join("");
+
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / ' + lj.titel + '</div>' +
+      '<p class="eyebrow">' + lj.titel + (lj.pruefung ? " · " + lj.pruefung : "") + '</p>' +
+      '<h1>' + lj.untertitel + '</h1>' +
+      '<div class="lf-box"><h3>Berufsschule — Lernfelder in diesem Lehrjahr</h3>' + lfRows + '</div>' +
+      '<section style="margin-top:26px"><h2>Module (Betrieb)</h2><div class="mod-list">' + rows + '</div></section>' +
+      '<div class="footer">Zeitrichtwerte nach Ausbildungsrahmenplan · an betrieblichen Plan anpassbar</div>' +
+      '</div>'
+    );
+  }
+
+  /* ---------- View: Modul ---------- */
+  function viewModul(id) {
+    var f = findModul(id);
+    if (!f) return viewStart();
+    var m = f.modul, lj = f.lj;
+    setNav("lj" + lj.nr);
+    var content = CONTENT[id];
+
+    var normen = (m.normen || []).map(function (n) { return '<span class="chip">' + n + '</span>'; }).join("");
+    var lfChips = lj.lernfelder.map(function (nr) { return '<span class="chip">LF ' + nr + '</span>'; }).join("");
+
+    var body;
+    if (content && content.bausteine) {
+      var cards = content.bausteine.map(function (bs) {
+        return '<a class="bs" href="#/modul/' + id + '/' + bs.id + '">' +
+          '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
+          '<div class="t"><h3>' + bs.titel + '</h3><small>' + (bs.blattNr || "") + '</small></div>' +
+          '<span class="mono" style="color:var(--ink-3)">→</span></a>';
+      }).join("");
+      body = '<p class="lead">' + content.intro + '</p>' +
+        '<section style="margin-top:22px"><h2>Blätter</h2><div class="baustein-grid">' + cards + '</div></section>';
+    } else {
+      body = '<div class="lf-box" style="border-left-color:var(--warn)"><h3>In Vorbereitung</h3>' +
+        '<p>Dieses Modul ist im Gerüst angelegt. Struktur, Rahmenplan-Bezug und Lernfeld stehen — die Arbeitsblätter, Zeichnungen und Lösungen folgen im gleichen Qualitätsstandard (normgerecht, kein erfundener Inhalt).</p></div>';
+    }
+
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / <a href="#/lj/' + lj.nr + '">' + lj.titel + '</a> / ' + m.titel + '</div>' +
+      '<p class="eyebrow">' + m.fach + ' · ' + m.status + '</p>' +
+      '<h1>' + m.titel + '</h1>' +
+      '<div class="mod-meta"><span class="chip"><b>Wochen:</b> ' + m.wochen + '</span>' +
+      '<span class="chip"><b>Rahmenplan:</b> ' + m.rahmenplan + '</span>' + lfChips + normen + '</div>' +
+      body +
+      '<div class="footer">Modul-ID ' + m.id + '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ---------- View: Blatt (Detail) ---------- */
+  function viewBlatt(id, bsId) {
+    var f = findModul(id);
+    var content = CONTENT[id];
+    if (!f || !content) return viewModul(id);
+    var m = f.modul, lj = f.lj;
+    var idx = -1, bs = null;
+    content.bausteine.forEach(function (b, i) { if (b.id === bsId) { bs = b; idx = i; } });
+    if (!bs) return viewModul(id);
+    setNav("lj" + lj.nr);
+
+    var prev = idx > 0 ? content.bausteine[idx - 1] : null;
+    var next = idx < content.bausteine.length - 1 ? content.bausteine[idx + 1] : null;
+    var pager =
+      (prev ? '<a class="btn" href="#/modul/' + id + '/' + prev.id + '">← ' + prev.titel + '</a>' : '<span></span>') +
+      (next ? '<a class="btn" href="#/modul/' + id + '/' + next.id + '">' + next.titel + ' →</a>' : '<span></span>');
+
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / <a href="#/lj/' + lj.nr + '">' + lj.titel + '</a> / <a href="#/modul/' + id + '">' + m.titel + '</a> / ' + bs.blattNr + '</div>' +
+      '<div class="blatt-print">' +
+      '<div class="blatt-head"><span class="no">' + (bs.blattNr || "") + '</span><h2>' + bs.titel + '</h2><span class="app-tag">Azubi Cockpit</span></div>' +
+      bs.render() +
+      '</div>' +
+      '<div class="btnrow"><button class="btn primary" id="btnPrint">🖨 Dieses Blatt drucken (PDF)</button>' +
+      '<a class="btn" href="#/modul/' + id + '">Zurück zum Modul</a></div>' +
+      '<div class="pager">' + pager + '</div>' +
+      '<div class="footer">' + m.titel + ' · ' + bs.blattNr + '</div>' +
+      '</div>'
+    );
+    var pb = document.getElementById("btnPrint");
+    if (pb) pb.addEventListener("click", function () {
+      document.body.classList.add("print-blatt");
+      window.print();
+      setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
+    });
+  }
+
+  /* ---------- Router ---------- */
+  function route() {
+    var hash = location.hash.replace(/^#\/?/, "");
+    var parts = hash.split("/").filter(Boolean);
+    window.scrollTo(0, 0);
+    if (parts.length === 0) return viewStart();
+    if (parts[0] === "lj") return viewLj(parts[1]);
+    if (parts[0] === "modul" && parts.length >= 3) return viewBlatt(parts[1], parts[2]);
+    if (parts[0] === "modul") return viewModul(parts[1]);
+    return viewStart();
+  }
+
+  window.addEventListener("hashchange", route);
+  window.addEventListener("DOMContentLoaded", route);
+  if (document.readyState !== "loading") route();
+})();
+
+
+(function(){var t=document.getElementById('themeToggle');if(!t)return;t.addEventListener('click',function(e){e.preventDefault();var r=document.documentElement;var c=r.getAttribute('data-theme');r.setAttribute('data-theme',c==='dark'?'light':'dark');});})();
+</script>
+</body>
+</html>
