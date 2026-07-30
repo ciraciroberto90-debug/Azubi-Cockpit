@@ -236,6 +236,69 @@ AZ.Pen.prototype.dimDia = function (cx, cy, r, angDeg, d, opts) {
   this._p('<text x="' + this.X(x2 + 1) + '" y="' + this.Y(y2) + '" class="' + (opts.cls || 'az-dimtx') + '">' + AZ.esc(t) + '</text>');
 };
 
+/* Innengewinde in Vorderansicht (DIN ISO 6410):
+   Kernloch = breiter Vollkreis, Gewinde-Nenn-⌀ = schmaler 3/4-Kreis */
+AZ.Pen.prototype.gewindeFront = function (cx, cy, dNom, core) {
+  this.circle(cx, cy, core / 2, "az-vis");           // Kernloch (breit)
+  var r = (dNom / 2) * this.s, X = this.X(cx), Y = this.Y(cy);
+  var a0 = Math.PI * 0.13, a1 = Math.PI * 1.87;      // Lücke oben rechts
+  var x0 = (X + r * Math.cos(a0)).toFixed(2), y0 = (Y + r * Math.sin(a0)).toFixed(2);
+  var x1 = (X + r * Math.cos(a1)).toFixed(2), y1 = (Y + r * Math.sin(a1)).toFixed(2);
+  this._p('<path d="M' + x0 + ',' + y0 + ' A' + r.toFixed(2) + ',' + r.toFixed(2) +
+    ' 0 1 1 ' + x1 + ',' + y1 + '" class="az-thin" fill="none"/>');
+};
+
+/* Schnittschraffur (45°, schmal) innerhalb einer Polygon-Kontur, abzügl. Löcher.
+   points/holes: Arrays von [x,y] in Welt-mm (Löcher = Polygon-Arrays) */
+AZ.Pen.prototype.hatchPoly = function (points, holes, spacing) {
+  spacing = spacing || 2.4;
+  var self = this, uid = this.b.uid + "h" + (this.b._hc = (this.b._hc || 0) + 1);
+  function poly(pts) {
+    return "M" + pts.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  }
+  var d = poly(points);
+  (holes || []).forEach(function (ho) { d += " " + poly(ho); });
+  this._p('<clipPath id="' + uid + '"><path d="' + d + '" clip-rule="evenodd"/></clipPath>');
+  var xs = points.map(function (p) { return p[0]; }), ys = points.map(function (p) { return p[1]; });
+  var minx = Math.min.apply(0, xs), maxx = Math.max.apply(0, xs), miny = Math.min.apply(0, ys), maxy = Math.max.apply(0, ys);
+  var X0 = this.X(minx), Y0 = this.Y(miny), W = (maxx - minx) * this.s, H = (maxy - miny) * this.s;
+  var step = spacing * this.s, lines = "";
+  for (var off = -H; off < W; off += step) {
+    lines += '<line x1="' + (X0 + off).toFixed(2) + '" y1="' + Y0.toFixed(2) +
+      '" x2="' + (X0 + off + H).toFixed(2) + '" y2="' + (Y0 + H).toFixed(2) + '" class="az-thin"/>';
+  }
+  this._p('<g clip-path="url(#' + uid + ')">' + lines + "</g>");
+};
+
+/* Polygonzug (Kontur) zeichnen */
+AZ.Pen.prototype.poly = function (points, cls) {
+  cls = cls || "az-vis";
+  var self = this;
+  var d = "M" + points.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  this._p('<path d="' + d + '" class="' + cls + '" fill="none"/>');
+};
+
+/* Oberflächenangabe DIN EN ISO 21920 (Grundsymbol + Ra), feste mm-Größe */
+AZ.Pen.prototype.oberflaeche = function (x, y, ra) {
+  var X = this.X(x), Y = this.Y(y);
+  this._p('<path d="M' + (X - 2.2) + ',' + Y + ' L' + (X - 0.6) + ',' + (Y + 2.4) +
+    ' L' + (X + 2.6) + ',' + (Y - 3.4) + '" class="az-vis" fill="none"/>');
+  this._p('<text x="' + (X - 2) + '" y="' + (Y - 1.2) + '" class="az-note">Ra ' + AZ.esc(ra) + '</text>');
+};
+
+/* Schnittverlaufslinie (Strichpunkt breit an Enden) mit Pfeilen + Buchstaben */
+AZ.Pen.prototype.schnittlinie = function (x1, x2, y, letter) {
+  var uid = this.b.uid;
+  this.line(x1, y, x2, y, "az-center");
+  // Pfeile nach unten (Blickrichtung) + Buchstaben an beiden Enden
+  this._p('<line x1="' + this.X(x1) + '" y1="' + this.Y(y) + '" x2="' + this.X(x1) + '" y2="' + this.Y(y + 5) +
+    '" class="az-vis" marker-end="url(#' + uid + 'ae)"/>');
+  this._p('<line x1="' + this.X(x2) + '" y1="' + this.Y(y) + '" x2="' + this.X(x2) + '" y2="' + this.Y(y + 5) +
+    '" class="az-vis" marker-end="url(#' + uid + 'ae)"/>');
+  this.text(x1 - 1, y - 1.5, letter, "az-lblb");
+  this.text(x2 + 1.5, y - 1.5, letter, "az-lblb");
+};
+
 /* ---- gemeinsame Defs / Style (in jedes SVG eingebettet -> druckt s/w) ---- */
 AZ._defs = function (uid) {
   // Maßpfeile ~3 mm (userSpaceOnUse = mm, da viewBox in mm)
@@ -257,6 +320,7 @@ AZ._style = function () {
     '.az-part{fill:#eceae2;stroke:none}' +
     '.az-dimtx{fill:#1a1a1a;font-size:3.2px;font-weight:600}' +
     '.az-note{fill:#1a1a1a;font-size:3px}' +
+    '.az-lblb{fill:#1a1a1a;font-size:4px;font-weight:800}' +
     '.az-todo{fill:#E4531D;font-size:4px;font-weight:800}' +
     '.az-sf{fill:none;stroke:#1a1a1a;stroke-width:0.35}' +
     '.az-sfk{fill:#666;font-size:2.4px;letter-spacing:.03em}' +
