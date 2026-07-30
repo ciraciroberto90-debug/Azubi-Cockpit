@@ -160,7 +160,7 @@
         '<span class="pfad-n">' + (i + 1) + '</span>' +
         '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
         '<span class="pfad-t">' + bs.titel + '</span>' +
-        '<span class="pfad-tg">' + (bs.teilgebietTitel || "") + '</span></a>';
+        '<span class="pfad-tg">' + (bs.teilgebietTitel || "") + (bs.woche ? " · W" + bs.woche : "") + '</span></a>';
     }).join("");
 
     // Filter-Chips
@@ -174,7 +174,7 @@
     var cards = content.bausteine.map(function (bs) {
       return '<a class="kcard" data-tg="' + bs.teilgebiet + '" data-schw="' + bs.schwierigkeit + '" href="#/modul/' + id + '/' + bs.id + '">' +
         '<span class="typ ' + bs.typ + '">' + bs.typ + '</span>' +
-        '<div class="t"><h3>' + bs.titel + '</h3><small>' + bs.blattNr + ' · ' + (bs.schwierigkeit !== "—" ? bs.schwierigkeit : "Theorie") + '</small></div>' +
+        '<div class="t"><h3>' + bs.titel + '</h3><small>' + bs.blattNr + (bs.woche ? " · W" + bs.woche : "") + ' · ' + (bs.schwierigkeit !== "—" ? bs.schwierigkeit : "Theorie") + '</small></div>' +
         '<span class="mono" style="color:var(--ink-3)">→</span></a>';
     }).join("");
 

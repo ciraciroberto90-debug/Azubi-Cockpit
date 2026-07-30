@@ -178,6 +178,60 @@ AZ.parts.biegeteil = function (spec) {
   };
 };
 
+/* ==========================================================================
+   AZ.parts.bolzen(spec) — Rundbolzen mit Außengewinde (Seitenansicht)
+   spec:{ benennung,nummer,werkstoff,toleranz, d (Nenn-⌀), l (Länge),
+          gew:'M10', fase:1 }
+   Außengewinde DIN ISO 6410: Nenn-⌀ breit (Außenkontur), Kern-⌀ schmal innen.
+   ========================================================================== */
+AZ.parts.bolzen = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", fase: 1 }, spec);
+  spec.d = spec.d || parseFloat(spec.gew.slice(1));
+  return {
+    spec: spec,
+    svg: function (modus) { return azBuildBolzen(spec, modus === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz;
+      return [
+        { name: "Länge", soll: AZ.mm(spec.l) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.l, kl)), mittel: "Messschieber" },
+        { name: "Gewinde", soll: spec.gew, tol: "—", mittel: "Gewindelehrring" },
+        { name: "Fase", soll: AZ.mm(spec.fase) + "×45°", tol: "—", mittel: "Sichtprüfung" },
+      ];
+    },
+  };
+};
+
+function azBuildBolzen(spec, modus) {
+  var voll = (modus === "fertig");
+  var l = spec.l, d = spec.d, f = spec.fase, td = 0.9; // Gewindetiefe (Darstellung)
+  var b = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var world = { x: -16, y: -18, w: l + 34, h: d + 40 };
+  b.zeichnung(world, function (p) {
+    p.fill(0, 0, l, d);
+    // Außenkontur (Nenn-⌀, breit) mit Fase am rechten Ende
+    p.line(0, 0, l - f, 0, "az-vis"); p.line(l - f, 0, l, f, "az-vis");
+    p.line(0, d, l - f, d, "az-vis"); p.line(l - f, d, l, d - f, "az-vis");
+    p.line(l, f, l, d - f, "az-vis"); p.line(0, 0, 0, d, "az-vis");
+    // Kern-⌀ (schmal) innen
+    if (voll) {
+      p.line(0, td, l - f, td, "az-thin");
+      p.line(0, d - td, l - f, d - td, "az-thin");
+    }
+    p.center(-4, d / 2, l + 4, d / 2);
+    if (voll) {
+      p.dimH(0, l, d + 9, d);
+      // Gewinde-Bezeichnung als Hinweislinie
+      p.line(l * 0.45, 0, l * 0.45 - 5, -6, "az-thin");
+      p.text(l * 0.45 - 16, -7, spec.gew, "az-dimtx");
+      p.text(l - f - 2, -3, AZ.mm(f) + "×45°", "az-dimtx");
+    } else {
+      p.dimH(0, l, d + 9, d, { text: "?", cls: "az-todo" });
+      p.text(l * 0.45 - 8, -7, "?", "az-todo");
+    }
+  });
+  return b.svg();
+}
+
 function azBuildBiege(spec, modus) {
   var voll = (modus === "fertig");
   var A = spec.a, B = spec.b, t = spec.t, r = spec.r;
