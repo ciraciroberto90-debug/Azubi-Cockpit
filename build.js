@@ -12,8 +12,14 @@ var js = [
   "js/data/curriculum.js",
   "js/lib/zeichnung.js",
   "js/lib/teile.js",
+  "js/module/_helpers.js",
   "js/module/m1-arbeitssicherheit.js",
+  "js/module/m2-technisches-zeichnen.js",
+  "js/module/m3-planen-organisieren.js",
+  "js/module/m4-pruefen-anreissen.js",
   "js/module/m5-grundkurs-metall.js",
+  "js/module/m6-fuegen.js",
+  "js/module/m7-zwischenpruefung.js",
   "js/app.js",
 ].map(read).join("\n\n");
 
@@ -35,6 +41,7 @@ var html =
   '    <a data-k="lj1" href="#/lj/1">1. Lehrjahr</a>\n' +
   '    <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>\n' +
   '    <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>\n' +
+  '    <a data-k="tools" href="#/tools/erstellen">＋ Erstellen</a>\n' +
   '    <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>\n' +
   "  </nav>\n</header>\n" +
   '<main id="app"></main>\n' +

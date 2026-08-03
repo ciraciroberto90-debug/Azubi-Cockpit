@@ -58,7 +58,7 @@ window.AZ_CURRICULUM = {
           wochen: "7 Wo.",
           rahmenplan: "Betriebliche und technische Kommunikation",
           normen: ["DIN ISO 128-2", "DIN ISO 129-1", "DIN ISO 5455", "DIN EN ISO 7200"],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Technische Zeichnungen lesen und erstellen, Skizzen, Stücklisten, Normen.",
         },
         {
@@ -68,7 +68,7 @@ window.AZ_CURRICULUM = {
           wochen: "5 Wo.",
           rahmenplan: "Planen und Organisieren der Arbeit …",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Arbeitsschritte planen, Material/Werkzeug bereitstellen, Ergebnisse bewerten.",
         },
         {
@@ -78,7 +78,7 @@ window.AZ_CURRICULUM = {
           wochen: "3 Wo.",
           rahmenplan: "Prüfen, Anreißen und Kennzeichnen",
           normen: ["DIN ISO 2768-1", "DIN EN ISO 286"],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Messschieber & Bügelmessschraube lesen, Toleranzen verstehen (ISO 2768), anreißen und körnen.",
         },
         {
@@ -98,7 +98,7 @@ window.AZ_CURRICULUM = {
           wochen: "4 Wo.",
           rahmenplan: "Zusammenbauen u. Verbinden von Bauteilen u. Baugruppen",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Schraub-, Steck- und Klemmverbindungen; Baugruppen montieren.",
         },
         {
@@ -108,7 +108,7 @@ window.AZ_CURRICULUM = {
           wochen: "2 Wo.",
           rahmenplan: "gestreckte Abschlussprüfung Teil 1",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Prüfungssimulation praktisch + schriftlich.",
         },
       ],

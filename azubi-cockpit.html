@@ -206,6 +206,25 @@ section{margin-top:clamp(34px,5vw,60px)}
 .anknuepf{background:color-mix(in srgb,var(--blue) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--blue) 40%,var(--line));border-radius:var(--r);padding:9px 13px;font-size:13.5px;color:var(--ink);margin:6px 0 4px}
 .anknuepf::before{content:"↪ ";color:var(--blue);font-weight:700}
 
+/* Messschieber-Ablesung */
+.msch-halter{overflow-x:auto;border:1px solid var(--line-strong);border-radius:4px;background:#fdfdfb;padding:8px 6px;margin:6px 0}
+.msch{display:block;min-width:520px;width:100%;height:auto}
+
+/* Aufgabe erstellen (Creator) */
+.creator{display:grid;grid-template-columns:340px 1fr;gap:20px;margin-top:18px}
+@media(max-width:820px){.creator{grid-template-columns:1fr}}
+.creator-form{background:var(--panel);border:1px solid var(--line-strong);border-radius:var(--r);padding:16px}
+.creator-form h3{margin:14px 0 6px;font-size:14px}
+.creator-form h3:first-child{margin-top:0}
+.frow{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;font-family:var(--font-mono);font-size:12.5px;color:var(--ink-2)}
+.creator-form input,.creator-form select{font-family:var(--font-mono);font-size:12.5px;padding:5px 7px;border:1px solid var(--line-strong);border-radius:4px;background:var(--panel-2);color:var(--ink);width:64px}
+.creator-form input[type=text]{width:120px}
+.featrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:7px 9px;margin:6px 0;font-family:var(--font-mono);font-size:12px}
+.featrow .ftag{font-weight:700;color:var(--blue)}
+.featrow input{width:52px}
+.rmfeat{cursor:pointer;border:1px solid var(--line-strong);background:var(--panel);border-radius:4px;color:var(--accent);font-weight:700;padding:2px 7px}
+.addbtns{display:flex;gap:8px;margin:8px 0}
+
 /* ============================================================================
    Druck: nur das aktuelle Blatt drucken (DIN A4), Rest ausblenden.
    Aktiviert über <body class="print-blatt"> beim Drucken eines Blatts.
@@ -240,6 +259,7 @@ section{margin-top:clamp(34px,5vw,60px)}
     <a data-k="lj1" href="#/lj/1">1. Lehrjahr</a>
     <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>
     <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>
+    <a data-k="tools" href="#/tools/erstellen">＋ Erstellen</a>
     <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>
   </nav>
 </header>
@@ -305,7 +325,7 @@ window.AZ_CURRICULUM = {
           wochen: "7 Wo.",
           rahmenplan: "Betriebliche und technische Kommunikation",
           normen: ["DIN ISO 128-2", "DIN ISO 129-1", "DIN ISO 5455", "DIN EN ISO 7200"],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Technische Zeichnungen lesen und erstellen, Skizzen, Stücklisten, Normen.",
         },
         {
@@ -315,7 +335,7 @@ window.AZ_CURRICULUM = {
           wochen: "5 Wo.",
           rahmenplan: "Planen und Organisieren der Arbeit …",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Arbeitsschritte planen, Material/Werkzeug bereitstellen, Ergebnisse bewerten.",
         },
         {
@@ -325,7 +345,7 @@ window.AZ_CURRICULUM = {
           wochen: "3 Wo.",
           rahmenplan: "Prüfen, Anreißen und Kennzeichnen",
           normen: ["DIN ISO 2768-1", "DIN EN ISO 286"],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Messschieber & Bügelmessschraube lesen, Toleranzen verstehen (ISO 2768), anreißen und körnen.",
         },
         {
@@ -345,7 +365,7 @@ window.AZ_CURRICULUM = {
           wochen: "4 Wo.",
           rahmenplan: "Zusammenbauen u. Verbinden von Bauteilen u. Baugruppen",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Schraub-, Steck- und Klemmverbindungen; Baugruppen montieren.",
         },
         {
@@ -355,7 +375,7 @@ window.AZ_CURRICULUM = {
           wochen: "2 Wo.",
           rahmenplan: "gestreckte Abschlussprüfung Teil 1",
           normen: [],
-          status: "geruest",
+          status: "fertig",
           beschreibung: "Prüfungssimulation praktisch + schriftlich.",
         },
       ],
@@ -1005,6 +1025,113 @@ function azBuildBiege(spec, modus) {
 
 
 /* ============================================================================
+   Gemeinsame Render-Helfer für Modul-Inhalte (Aufgaben, Prüftabellen,
+   Zeichnung mit Umschalter, "Zeichnung lesen", Messschieber-Ablesung).
+   Wird VOR den Modul-Dateien geladen.
+   ==========================================================================*/
+
+/* Merkmalstext einer Werkstückbeschreibung (gruppiert gleiche Bohrungen) */
+function azFeatureText(spec) {
+  var map = {}, order = [];
+  (spec.features || []).forEach(function (f) {
+    var key = f.typ === "gewinde" ? ("Gewinde " + f.gew)
+      : ("Bohrung ⌀" + AZ.mm(f.d) + (f.passung ? " " + f.passung : "") + (f.senkung ? " mit Senkung ⌀" + AZ.mm(f.senkung.d) : ""));
+    if (!(key in map)) { map[key] = 0; order.push(key); } map[key]++;
+  });
+  var parts = order.map(function (k) { return (map[k] > 1 ? map[k] + "× " : "") + k; });
+  if (spec.fase) parts.push("Fase " + AZ.mm(spec.fase) + "×45°");
+  return parts.join(", ");
+}
+function azAufgabenstellung(api) {
+  var s = api.spec;
+  var maße = s.w ? (AZ.mm(s.w) + " × " + AZ.mm(s.h) + " × " + AZ.mm(s.t) + " mm")
+    : (s.l != null ? ("⌀" + AZ.mm(s.d) + " × " + AZ.mm(s.l) + " mm")
+      : ("Schenkel " + AZ.mm(s.a) + " / " + AZ.mm(s.b) + " mm, Dicke " + AZ.mm(s.t) + " mm"));
+  var ft = s.features ? azFeatureText(s) : (s.gew ? "Außengewinde " + s.gew : "");
+  return "Fertige das Werkstück <strong>" + AZ.esc(s.benennung) + "</strong> nach Zeichnung <em>" + s.nummer +
+    "</em> auf Endmaß <strong>" + maße + "</strong>" + (ft ? " mit: " + ft : "") + ". Prüfe die Maße nach Zeichnung.";
+}
+function azMasseTable(api) {
+  var rows = api.masse().map(function (r) {
+    return "<tr><td>" + r.name + "</td><td>" + r.soll + "</td><td>" + r.tol + "</td><td>" + r.mittel + "</td><td>______</td><td>☐</td></tr>";
+  }).join("");
+  return '<table class="tab"><thead><tr><th>Maß</th><th>Sollmaß</th><th>Grenzabmaß</th><th>Prüfmittel</th><th>Ist</th><th>i.O.</th></tr></thead><tbody>' + rows + "</tbody></table>";
+}
+function azZeichnungBlock(api) {
+  return '<div class="aufgabe">' +
+    '<div class="z-toggle"><button class="btn small" onclick="this.closest(\'.aufgabe\').classList.toggle(\'erg\')">Fertigzeichnung ⇄ Zum Ergänzen</button></div>' +
+    '<div class="zeichnung-halter z-fertig">' + api.svg("fertig") + "</div>" +
+    '<div class="zeichnung-halter z-erg">' + api.svg("ergaenzen") + "</div></div>";
+}
+function azAufgabeRender(aufg) {
+  var api = aufg.api;
+  return '<div class="bl-meta"><span>' + aufg.teilgebietTitel + '</span><span>Woche ' + aufg.woche + '</span><span>Schwierigkeit: ' + aufg.schwierigkeit + '</span><span>' + aufg.blattNr + '</span></div>' +
+    (aufg.hinweis ? '<div class="anknuepf">' + aufg.hinweis + '</div>' : '') +
+    '<h3>Aufgabe</h3><p>' + azAufgabenstellung(api) + '</p>' +
+    '<h3>Zeichnung</h3>' + azZeichnungBlock(api) +
+    '<h3>Prüfmaße</h3>' + azMasseTable(api) +
+    '<p class="chk-hint">Grenzabmaße automatisch nach DIN ISO 2768-' + (api.spec.toleranz || "m") + '; Passungen nach DIN EN ISO 286.</p>' +
+    '<details class="loesung-box"><summary>Lösung anzeigen</summary>' +
+    '<p>Werkstück i.O., wenn alle Istmaße innerhalb der Grenzabmaße liegen, Bohrungen/Gewinde lehrenhaltig und die Kanten gratfrei (ggf. gefast) sind. Musterzeichnung = Fertigzeichnung oben (Umschalter).</p></details>' +
+    '<div class="unterschrift"><div>Azubi: __________________</div><div>Ausbilder: __________________</div><div>Datum: ____________</div></div>';
+}
+/* Lochkreis-Positionen (Teilkreis) */
+function azTeilkreis(cx, cy, r, n, start, d) {
+  var arr = [], a0 = (start == null ? 45 : start) * Math.PI / 180;
+  for (var i = 0; i < n; i++) { var a = a0 + i * 2 * Math.PI / n; arr.push({ typ: "bohrung", x: +(cx + r * Math.cos(a)).toFixed(1), y: +(cy + r * Math.sin(a)).toFixed(1), d: d }); }
+  return arr;
+}
+
+/* "Zeichnung lesen" — Fertigzeichnung + Fragen + Lösung
+   cfg:{api, text, fragen:[..], loesungen:[..], meta:[..], hinweis}          */
+function leseAufgabe(cfg) {
+  var meta = (cfg.meta || []).map(function (m) { return "<span>" + m + "</span>"; }).join("");
+  var fragen = (cfg.fragen || []).map(function (q, i) { return '<p class="frage">Frage ' + (i + 1) + ": " + q + " ____________________</p>"; }).join("");
+  var los = (cfg.loesungen || []).map(function (l) { return "<li>" + l + "</li>"; }).join("");
+  return '<div class="bl-meta">' + meta + "</div>" +
+    (cfg.hinweis ? '<div class="anknuepf">' + cfg.hinweis + "</div>" : "") +
+    "<h3>Aufgabe: Zeichnung lesen</h3><p>" + (cfg.text || "Lies die Zeichnung und beantworte die Fragen.") + "</p>" +
+    '<div class="zeichnung-halter">' + cfg.api.svg("fertig") + "</div>" +
+    fragen +
+    '<details class="loesung-box"><summary>Lösung anzeigen</summary><ol class="ol">' + los + "</ol></details>";
+}
+
+/* Messschieber-Ablesung (Nonius 1/20 = 0,05 mm), korrekt konstruiert.
+   value als Vielfaches von 0,05. Liefert ein eigenständiges SVG.            */
+function azMessschieber(value) {
+  var N = Math.floor(value), m = Math.round((value - N) / 0.05); // 0..19
+  var PXmm = 7, y0 = 26, yN = 44, hpad = 12;
+  var mmMax = N + 44;
+  var W = mmMax * PXmm + hpad * 2, H = 68;
+  function X(mm) { return (hpad + mm * PXmm).toFixed(1); }
+  var s = '<svg viewBox="0 0 ' + W.toFixed(0) + ' ' + H + '" class="msch" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+  s += '<style>.mm{stroke:#1a1a1a;stroke-width:0.8}.mm5{stroke:#1a1a1a;stroke-width:1}.non{stroke:#1a1a1a;stroke-width:0.8}' +
+    '.hit{stroke:#E4531D;stroke-width:1.6}.ptr{stroke:#E4531D;stroke-width:1}.txt{font-family:ui-monospace,monospace;font-size:7px;fill:#1a1a1a}' +
+    '.txt2{font-family:ui-monospace,monospace;font-size:6px;fill:#666}.bar{fill:#f0efe9;stroke:#1a1a1a;stroke-width:0.6}</style>';
+  s += '<rect x="' + hpad + '" y="' + (y0 - 14) + '" width="' + (mmMax * PXmm) + '" height="12" class="bar"/>';
+  // Hauptskala (mm)
+  for (var mm = 0; mm <= mmMax; mm++) {
+    var big = (mm % 10 === 0), mid = (mm % 5 === 0);
+    var hgt = big ? 12 : (mid ? 8 : 5);
+    s += '<line x1="' + X(mm) + '" y1="' + (y0 - 2) + '" x2="' + X(mm) + '" y2="' + (y0 - 2 - hgt) + '" class="' + (mid ? "mm5" : "mm") + '"/>';
+    if (big) s += '<text x="' + X(mm) + '" y="' + (y0 - 15) + '" text-anchor="middle" class="txt2">' + (mm / 10) + '</text>';
+  }
+  // Nonius-Träger
+  s += '<rect x="' + X(value) + '" y="' + (yN - 2) + '" width="' + (39 * PXmm) + '" height="12" class="bar"/>';
+  for (var k = 0; k <= 20; k++) {
+    var nx = value + k * 1.95;
+    var cls = (k === m) ? "hit" : "non";
+    s += '<line x1="' + X(nx) + '" y1="' + (yN) + '" x2="' + X(nx) + '" y2="' + (yN + 8) + '" class="' + cls + '"/>';
+    if (k % 5 === 0) s += '<text x="' + X(nx) + '" y="' + (yN + 16) + '" text-anchor="middle" class="txt2">' + (k / 2) + '</text>';
+  }
+  // Zeiger (Nonius-Null) + Markierung der koinzidierenden Linie
+  s += '<line x1="' + X(value) + '" y1="' + (y0 - 2) + '" x2="' + X(value) + '" y2="' + (yN + 8) + '" class="ptr" stroke-dasharray="2 1.5"/>';
+  s += '</svg>';
+  return s;
+}
+
+
+/* ============================================================================
    Modul-Inhalt: Arbeits- & Gesundheitsschutz, Umweltschutz
    Rahmenplan: "Sicherheit u. Gesundheitsschutz bei der Arbeit" (durchgängig)
    Berufsschule: u. a. Lernfeld 3 (sicherheitstechnische Aspekte)
@@ -1146,6 +1273,297 @@ AZ_CONTENT["m1-arbeitssicherheit"] = {
           '<li><strong>Frage 3:</strong> <strong>T</strong>echnisch vor <strong>O</strong>rganisatorisch vor <strong>P</strong>ersonenbezogen (TOP, ArbSchG §5).</li>' +
           '</ol>' +
           '<p class="chk-hint">Konkrete betriebliche Vorschriften/Grenzwerte ergänzt die Ausbildung mit den gültigen DGUV-Regeln (fachlich prüfen).</p>';
+      },
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Modul-Inhalt: Betriebliche & technische Kommunikation · Technisches Zeichnen
+   Rahmenplan: "Betriebliche und technische Kommunikation" (7 Wo.)
+   Berufsschule: Lernfeld 1 "Analysieren von Funktionszusammenhängen".
+   Normen: DIN ISO 128-2, 129-1, 5455, 5456, EN ISO 7200, 2768, EN ISO 286.
+   Übungen: Zeichnungen lesen und ergänzen (Generator), Toleranzen berechnen.
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+var TZ = AZ.parts;
+
+var TZ_TG = [
+  {
+    id: "linien", titel: "Linien & Ansichten", kurz: "Linienarten, Dreitafelprojektion", theorieWoche: 1,
+    theorie: function () {
+      return '<div class="bl-meta"><span>Theorie</span><span>Woche 1</span><span>DIN ISO 128 / 5456</span></div>' +
+        '<h3>Linienarten (DIN ISO 128-2)</h3>' +
+        '<table class="tab"><thead><tr><th>Linie</th><th>Verwendung</th></tr></thead><tbody>' +
+        '<tr><td>Breite Volllinie</td><td>sichtbare Kanten, Umrisse</td></tr>' +
+        '<tr><td>Schmale Volllinie</td><td>Maßlinien, Maßhilfslinien, Schraffur</td></tr>' +
+        '<tr><td>Schmale Strichlinie</td><td>verdeckte Kanten</td></tr>' +
+        '<tr><td>Schmale Strichpunktlinie</td><td>Mittel-/Symmetrielinien</td></tr></tbody></table>' +
+        '<h3>Ansichten — Dreitafelprojektion (europäische Methode, 1. Winkel)</h3>' +
+        '<p>Vorderansicht (Hauptansicht), Draufsicht <strong>darunter</strong>, Seitenansicht von links <strong>rechts</strong> daneben. Die Ansichten sind aufeinander projiziert (fluchten).</p>' +
+        '<p class="frage">Frage 1: Welche Linienart stellt eine verdeckte Kante dar? ____________________</p>' +
+        '<p class="frage">Frage 2: Wo steht die Draufsicht in der europäischen Methode? ____________________</p>';
+    },
+    aufgaben: [
+      {
+        blattNr: "TZ-101", schwierigkeit: "leicht", woche: 1, typ: "theorie", render: function () {
+          return leseAufgabe({
+            meta: ["Zeichnung lesen", "Woche 1", "TZ-101"],
+            text: "Betrachte die Zeichnung und beantworte die Fragen zu Ansichten und Linien.",
+            api: TZ.platte({ benennung: "Übungsteil", nummer: "TZ-101", w: 80, h: 50, t: 15, features: [{ typ: "bohrung", x: 40, y: 25, d: 12 }] }),
+            fragen: ["Wie viele Ansichten zeigt die Zeichnung (inkl. Schnitt)?",
+              "Mit welcher Linienart ist die Mittellinie der Bohrung gezeichnet?",
+              "Welche Linienart begrenzt die sichtbaren Außenkanten?"],
+            loesungen: ["Vorderansicht + Schnitt A–A (2 Darstellungen).",
+              "Schmale Strichpunktlinie (Mittellinie).",
+              "Breite Volllinie (sichtbare Kanten)."],
+          });
+        },
+      },
+      {
+        blattNr: "TZ-102", schwierigkeit: "mittel", woche: 2, typ: "zeichnung", render: function () {
+          var api = TZ.platte({ benennung: "Ansicht ergänzen", nummer: "TZ-102", w: 70, h: 45, t: 12, features: [{ typ: "bohrung", x: 35, y: 22.5, d: 10 }] });
+          return '<div class="bl-meta"><span>Zeichnung ergänzen</span><span>Woche 2</span><span>TZ-102</span></div>' +
+            '<div class="anknuepf">Schalte auf „Zum Ergänzen“ um und trage fehlende Ansicht/Schnitt und Maße ein.</div>' +
+            '<h3>Aufgabe</h3><p>Ergänze den fehlenden Schnitt A–A sowie die Maße. Kontrolliere über die Fertigzeichnung.</p>' +
+            azZeichnungBlock(api);
+        },
+      },
+    ],
+  },
+  {
+    id: "bemassung", titel: "Bemaßung & Maßstäbe", kurz: "DIN ISO 129 / 5455", theorieWoche: 3,
+    theorie: function () {
+      return '<div class="bl-meta"><span>Theorie</span><span>Woche 3</span><span>DIN ISO 129 / 5455</span></div>' +
+        '<h3>Bemaßung (DIN ISO 129-1)</h3><p>Maßlinien schmal mit Maßpfeilen, Maßhilfslinien stehen ~2 mm über, Maßzahl über der Maßlinie. Durchmesser ⌀, Radius R. Grundeinheit mm (nicht angeschrieben). Jedes Maß nur einmal.</p>' +
+        '<h3>Maßstäbe (DIN ISO 5455)</h3><p>Originalgröße 1:1; Verkleinerung 1:2, 1:5, 1:10 …; Vergrößerung 2:1, 5:1, 10:1. Das Werkstück behält reale mm-Maße — nur die Darstellung wird skaliert.</p>' +
+        '<p class="frage">Frage: Welches Zeichen steht vor einem Durchmessermaß? ____________________</p>';
+    },
+    aufgaben: [
+      {
+        blattNr: "TZ-111", schwierigkeit: "leicht", woche: 3, typ: "theorie", render: function () {
+          return leseAufgabe({
+            meta: ["Zeichnung lesen", "Woche 3", "TZ-111"],
+            text: "Lies die Maße aus der Zeichnung ab.",
+            api: TZ.platte({ benennung: "Maßübung", nummer: "TZ-111", w: 90, h: 50, t: 15, features: [{ typ: "bohrung", x: 30, y: 25, d: 12, passung: "H9" }, { typ: "gewinde", x: 65, y: 25, gew: "M8" }] }),
+            fragen: ["Wie groß ist die Länge des Werkstücks?", "Wie groß ist die Dicke?",
+              "Welchen Durchmesser hat die linke Bohrung und welche Passung?", "Welches Gewinde hat die rechte Bohrung?"],
+            loesungen: ["Länge = 90 mm.", "Dicke = 15 mm.", "⌀12 H9.", "M8."],
+          });
+        },
+      },
+      {
+        blattNr: "TZ-112", schwierigkeit: "mittel", woche: 3, typ: "zeichnung", render: function () {
+          var api = TZ.platte({ benennung: "Bemaßen", nummer: "TZ-112", w: 100, h: 60, t: 10, features: [{ typ: "bohrung", x: 30, y: 30, d: 8 }, { typ: "bohrung", x: 70, y: 30, d: 8 }] });
+          return '<div class="bl-meta"><span>Zeichnung ergänzen</span><span>Woche 3</span><span>TZ-112</span></div>' +
+            '<h3>Aufgabe</h3><p>Bemaße das Werkstück vollständig (Länge, Breite, Dicke, Lochabstände, Durchmesser). Kontrolle über die Fertigzeichnung.</p>' +
+            azZeichnungBlock(api);
+        },
+      },
+    ],
+  },
+  {
+    id: "schnitte", titel: "Schnitte", kurz: "Schnittdarstellung, Schraffur", theorieWoche: 4,
+    theorie: function () {
+      return '<div class="bl-meta"><span>Theorie</span><span>Woche 4</span><span>DIN ISO 128</span></div>' +
+        '<h3>Schnittdarstellung</h3><p>Ein Schnitt zeigt das Innere eines Werkstücks. Der Schnittverlauf wird mit einer Strichpunktlinie und Pfeilen (Blickrichtung) sowie Buchstaben (A–A) gekennzeichnet. Geschnittene Flächen erhalten eine <strong>Schraffur</strong> (schmale Volllinien, meist 45°).</p>' +
+        '<p class="frage">Frage: Womit werden geschnittene (volle) Flächen gekennzeichnet? ____________________</p>';
+    },
+    aufgaben: [
+      {
+        blattNr: "TZ-121", schwierigkeit: "mittel", woche: 4, typ: "theorie", render: function () {
+          return leseAufgabe({
+            meta: ["Zeichnung lesen", "Woche 4", "TZ-121"],
+            hinweis: "Dasselbe Prüfungsstück wie im Grundkurs Metall (Halteplatte).",
+            text: "Werte den Schnitt A–A aus.",
+            api: TZ.platte({ benennung: "Halteplatte", nummer: "GM-190", w: 90, h: 50, t: 15, fase: 2, ra: "3,2", features: [{ typ: "bohrung", x: 25, y: 25, d: 12, passung: "H9" }, { typ: "gewinde", x: 65, y: 25, gew: "M8" }] }),
+            fragen: ["Was zeigt der Schnitt A–A?", "Welche der beiden Bohrungen ist ein Gewinde und woran erkennst du es im Schnitt?", "Wie ist die Kante oben im Schnitt bearbeitet?"],
+            loesungen: ["Das Innere der Platte in Dickenrichtung (15 mm) mit Durchgangsbohrung und Gewinde.",
+              "Die rechte (M8): im Schnitt Kern-⌀ als breite und Nenn-⌀ als schmale Linie (DIN ISO 6410).",
+              "Fase 2×45° (gebrochene Kante)."],
+          });
+        },
+      },
+    ],
+  },
+  {
+    id: "toleranzen", titel: "Toleranzen & Passungen", kurz: "ISO 2768, ISO 286, H7/g6", theorieWoche: 6,
+    theorie: function () {
+      return '<div class="bl-meta"><span>Theorie</span><span>Woche 6</span><span>DIN ISO 2768 / EN ISO 286</span></div>' +
+        '<h3>Allgemeintoleranzen (DIN ISO 2768-1)</h3><p>Grenzabmaße je Nennmaßbereich; Klasse mittel (m): >6–30 → ±0,2 · >30–120 → ±0,3.</p>' +
+        '<h3>Passungen (DIN EN ISO 286)</h3><p>Toleranzfeld (Buchstabe) + Qualität (Zahl). <strong>H</strong> = Bohrung mit unterem Abmaß 0. Beispiel Einheitsbohrung: <strong>H7/g6</strong> ergibt eine <strong>Spielpassung</strong> (Welle g6 immer kleiner als Bohrung H7). Große Buchstaben = Bohrung, kleine = Welle.</p>' +
+        '<h3>Berechne die Grenzabmaße (ISO 2768-m)</h3>' +
+        '<table class="tab"><thead><tr><th>Nennmaß</th><th>Grenzabmaß ±</th></tr></thead><tbody>' +
+        '<tr><td>25 mm</td><td>__________</td></tr><tr><td>80 mm</td><td>__________</td></tr><tr><td>12 mm</td><td>__________</td></tr></tbody></table>' +
+        '<p class="frage">Frage: Ist H7/g6 eine Spiel-, Übergangs- oder Presspassung? ____________________</p>' +
+        '<details class="loesung-box"><summary>Lösung anzeigen</summary><ul class="ul">' +
+        '<li>25 mm (>6–30) → ±0,2 mm · 80 mm (>30–120) → ±0,3 mm · 12 mm (>6–30) → ±0,2 mm</li>' +
+        '<li>H7/g6 = <strong>Spielpassung</strong> (immer Luft zwischen Welle und Bohrung).</li></ul></details>';
+    },
+    aufgaben: [
+      {
+        blattNr: "TZ-131", schwierigkeit: "mittel", woche: 6, typ: "theorie", render: function () {
+          return leseAufgabe({
+            meta: ["Zeichnung lesen", "Woche 6", "TZ-131"],
+            text: "Werte die Passbohrung aus.",
+            api: TZ.platte({ benennung: "Passbohrung", nummer: "TZ-131", w: 80, h: 50, t: 12, features: [{ typ: "bohrung", x: 40, y: 25, d: 12, passung: "H9" }] }),
+            fragen: ["Welche Passung hat die Bohrung?", "Welche Grenzabmaße ergeben sich (⌀12 H9, IT9 = 43 µm)?", "Welches Prüfmittel nutzt du?"],
+            loesungen: ["⌀12 H9.", "oberes Abmaß +0,043 mm, unteres 0 mm (12,000 … 12,043).", "Grenzlehrdorn („Gut“ geht, „Ausschuss“ nicht)."],
+          });
+        },
+      },
+    ],
+  },
+  {
+    id: "oberflaeche", titel: "Oberfläche & Schriftfeld", kurz: "Ra (ISO 21920), Schriftfeld (ISO 7200)", theorieWoche: 7,
+    theorie: function () {
+      return '<div class="bl-meta"><span>Theorie</span><span>Woche 7</span><span>EN ISO 21920 / 7200</span></div>' +
+        '<h3>Oberflächenangabe</h3><p><strong>Ra</strong> = arithmetischer Mittenrauwert in µm (DIN EN ISO 21920). Kleiner Ra = glatter. Das Grundsymbol ist ein „Haken“ an der bearbeiteten Fläche.</p>' +
+        '<h3>Schriftfeld (DIN EN ISO 7200)</h3><p>Enthält u. a. Benennung, Werkstoff, Maßstab, Zeichnungsnummer, Datum/Ersteller, Allgemeintoleranz und das Projektionssymbol.</p>' +
+        '<p class="frage">Frage: Was bedeutet eine kleine Ra-Zahl für die Oberfläche? ____________________</p>';
+    },
+    aufgaben: [
+      {
+        blattNr: "TZ-141", schwierigkeit: "leicht", woche: 7, typ: "theorie", render: function () {
+          return leseAufgabe({
+            meta: ["Schriftfeld lesen", "Woche 7", "TZ-141"],
+            text: "Lies die Angaben aus dem Schriftfeld ab.",
+            api: TZ.platte({ benennung: "Halteplatte", nummer: "GM-190", w: 90, h: 50, t: 15, fase: 2, ra: "3,2", features: [{ typ: "bohrung", x: 25, y: 25, d: 12, passung: "H9" }, { typ: "gewinde", x: 65, y: 25, gew: "M8" }] }),
+            fragen: ["Welcher Werkstoff ist angegeben?", "Welche Allgemeintoleranz gilt?", "Wie lautet die Zeichnungsnummer?", "Welche Oberflächenangabe steht an der Vorderseite?"],
+            loesungen: ["S235JR.", "ISO 2768-m.", "GM-190.", "Ra 3,2 µm."],
+          });
+        },
+      },
+    ],
+  },
+];
+
+/* ---- Katalog -> bausteine + Lernpfad + Teilgebiete ---- */
+(function () {
+  var bausteine = [], teilgebiete = [], seq = 0;
+  TZ_TG.forEach(function (tg) {
+    teilgebiete.push({ id: tg.id, titel: tg.titel, kurz: tg.kurz });
+    var thId = "tz-" + tg.id + "-theorie";
+    bausteine.push({ id: thId, typ: "theorie", titel: "Theorie: " + tg.titel, blattNr: tg.id.toUpperCase(), teilgebiet: tg.id, teilgebietTitel: tg.titel, schwierigkeit: "—", woche: tg.theorieWoche, seq: seq++, render: (function (t) { return function () { return t.theorie(); }; })(tg) });
+    tg.aufgaben.forEach(function (a, i) {
+      var id = "tz-" + tg.id + "-" + (i + 1);
+      bausteine.push({ id: id, typ: a.typ || "zeichnung", titel: a.blattNr + " — " + tg.titel, blattNr: a.blattNr, teilgebiet: tg.id, teilgebietTitel: tg.titel, schwierigkeit: a.schwierigkeit, woche: a.woche, seq: seq++, render: a.render });
+    });
+  });
+  var lernpfad = bausteine.slice().sort(function (a, b) { return (a.woche - b.woche) || (a.seq - b.seq); }).map(function (b) { return b.id; });
+  AZ_CONTENT["m2-technische-kommunikation"] = {
+    intro: "Technisches Zeichnen (Lernfeld 1): Zeichnungen lesen und erstellen — Linienarten, Ansichten, Bemaßung, " +
+      "Schnitte, Toleranzen & Passungen, Oberflächen und Schriftfeld. Mit Lese- und Ergänzen-Übungen an echten, " +
+      "normgerechten Zeichnungen (verknüpft mit den Werkstücken aus dem Grundkurs Metall).",
+    teilgebiete: teilgebiete, lernpfad: lernpfad, bausteine: bausteine,
+  };
+})();
+
+
+/* ============================================================================
+   Modul-Inhalt: Planen und Organisieren der Arbeit, Bewerten der Ergebnisse
+   Rahmenplan: "Planen und Organisieren der Arbeit …" (5 Wo.)
+   Verknüpft mit dem Grundkurs Metall (Arbeitsplan zur Halteplatte).
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+AZ_CONTENT["m3-planen-organisieren"] = {
+  intro: "Bevor gefertigt wird, wird geplant: Arbeitsschritte festlegen, Material und Werkzeug bereitstellen, " +
+    "Reihenfolge und Zeit bestimmen und am Ende das Ergebnis bewerten. Geübt am Werkstück aus dem Grundkurs Metall.",
+  bausteine: [
+    {
+      id: "pl-theorie", typ: "theorie", titel: "Theorie: Arbeitsplanung", blattNr: "PL-T01", render: function () {
+        return '<div class="bl-meta"><span>Theorie</span><span>Woche 1</span></div>' +
+          '<h3>Der Arbeitsplan</h3><p>Ein Arbeitsplan legt die <strong>Reihenfolge der Arbeitsschritte</strong> fest und ordnet jedem Schritt ' +
+          '<strong>Werkzeug/Maschine</strong>, <strong>Prüfmittel</strong> und eine grobe <strong>Zeit</strong> zu. So wird nichts vergessen und die Fertigung ist nachvollziehbar.</p>' +
+          '<h3>Reihenfolge (Grundregel)</h3><p>Erst <strong>anreißen</strong>, dann <strong>trennen/spanen</strong> (sägen, feilen), dann <strong>bohren/Gewinde</strong>, zuletzt <strong>entgraten/fasen</strong> und <strong>prüfen</strong>.</p>' +
+          '<p class="frage">Frage: Warum bohrt man erst nach dem Anreißen und Körnen? _______________________________</p>';
+      },
+    },
+    {
+      id: "pl-arbeitsplan", typ: "praxis", titel: "Übung: Arbeitsplan Halteplatte erstellen", blattNr: "PL-Ü01", render: function () {
+        var leer = "";
+        for (var i = 1; i <= 6; i++) leer += '<tr><td>' + i + '</td><td>________________________</td><td>____________</td><td>____________</td><td>____</td></tr>';
+        return '<div class="bl-meta"><span>Übung</span><span>Woche 2</span><span>Lösung unten</span></div>' +
+          '<div class="anknuepf">Werkstück: Halteplatte (GM-190) aus dem Grundkurs Metall.</div>' +
+          '<h3>Erstelle den Arbeitsplan</h3><p>Trage die Arbeitsschritte in der richtigen Reihenfolge ein.</p>' +
+          '<table class="tab"><thead><tr><th>Nr.</th><th>Arbeitsschritt</th><th>Werkzeug/Maschine</th><th>Prüfmittel</th><th>Zeit</th></tr></thead><tbody>' + leer + '</tbody></table>' +
+          '<details class="loesung-box"><summary>Lösung anzeigen</summary>' +
+          '<table class="tab"><thead><tr><th>Nr.</th><th>Arbeitsschritt</th><th>Werkzeug/Maschine</th><th>Prüfmittel</th></tr></thead><tbody>' +
+          '<tr><td>1</td><td>Rohteil anreißen &amp; körnen</td><td>Höhenreißer, Körner</td><td>Anschlagwinkel</td></tr>' +
+          '<tr><td>2</td><td>Außenmaße 90×50 feilen</td><td>Feile</td><td>Messschieber</td></tr>' +
+          '<tr><td>3</td><td>Dicke 15 prüfen/richten</td><td>Feile</td><td>Messschieber</td></tr>' +
+          '<tr><td>4</td><td>Kernloch 6,8 + ⌀12 bohren, ⌀12 reiben (H9)</td><td>Bohrmaschine, Reibahle</td><td>Grenzlehrdorn</td></tr>' +
+          '<tr><td>5</td><td>Gewinde M8 schneiden</td><td>Gewindebohrer-Satz</td><td>Gewindelehrdorn</td></tr>' +
+          '<tr><td>6</td><td>Kanten 2×45° fasen, entgraten, endprüfen</td><td>Senker/Feile</td><td>Sicht, Messschieber</td></tr>' +
+          '</tbody></table></details>';
+      },
+    },
+    {
+      id: "pl-werkzeug", typ: "praxis", titel: "Übung: Material- & Werkzeugliste", blattNr: "PL-Ü02", render: function () {
+        return '<div class="bl-meta"><span>Übung</span><span>Woche 3</span></div>' +
+          '<h3>Stelle zusammen, was du brauchst</h3>' +
+          '<table class="tab"><thead><tr><th>Material</th><th>Menge/Abmessung</th></tr></thead><tbody>' +
+          '<tr><td>________________</td><td>________________</td></tr><tr><td>________________</td><td>________________</td></tr></tbody></table>' +
+          '<table class="tab" style="margin-top:10px"><thead><tr><th>Werkzeug/Maschine</th><th>Prüfmittel</th></tr></thead><tbody>' +
+          '<tr><td>________________</td><td>________________</td></tr><tr><td>________________</td><td>________________</td></tr></tbody></table>' +
+          '<details class="loesung-box"><summary>Lösung (Beispiel)</summary><p>Material: Flachstahl S235JR 95×55×18 (Zugabe zum Endmaß). ' +
+          'Werkzeug: Feile, Bügelsäge, Bohrmaschine + Bohrer ⌀6,8/⌀12, Reibahle 12H9, Gewindebohrer M8, Senker. Prüfmittel: Messschieber, Grenzlehrdorn 12H9, Gewindelehrdorn M8, Anschlagwinkel.</p></details>';
+      },
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Modul-Inhalt: Prüfen, Anreißen und Kennzeichnen
+   Rahmenplan: "Prüfen, Anreißen und Kennzeichnen" (3 Wo.)
+   Mit Messschieber-Ablese-Übung (Nonius 1/20) und Toleranzberechnung.
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+AZ_CONTENT["m4-pruefen-anreissen"] = {
+  intro: "Messen, prüfen, anreißen und kennzeichnen — die Grundlage für maßhaltiges Arbeiten. Du lernst den " +
+    "Messschieber (Nonius) und die Bügelmessschraube ablesen und Grenzabmaße nach DIN ISO 2768 bestimmen.",
+  bausteine: [
+    {
+      id: "pr-theorie", typ: "theorie", titel: "Theorie: Messmittel & Toleranzen", blattNr: "PR-T01", render: function () {
+        return '<div class="bl-meta"><span>Theorie</span><span>Woche 1</span><span>DIN ISO 2768 / EN ISO 286</span></div>' +
+          '<h3>Messschieber (Nonius)</h3><p>Ablesegenauigkeit je Ausführung: 1/10 → 0,1 mm, 1/20 → <strong>0,05 mm</strong>, 1/50 → 0,02 mm. ' +
+          'Ganze mm an der Hauptskala (vor der Nonius-Null), Nachkommastelle dort, wo eine Nonius-Linie mit einer Hauptlinie <strong>fluchtet</strong>.</p>' +
+          '<h3>Bügelmessschraube</h3><p>Skalenwert 0,01 mm (Spindelsteigung 0,5 mm, Trommel 50 Teile). Immer mit Ratsche messen.</p>' +
+          '<h3>Anreißen &amp; Kennzeichnen</h3><p>Mit Höhenreißer/Reißnadel und Anschlagwinkel anreißen, Bohrmitten <strong>körnen</strong>, Teile dauerhaft kennzeichnen (Schlagzahlen).</p>' +
+          '<p class="frage">Frage: Welche Ablesegenauigkeit hat ein Nonius 1/20? __________ mm</p>';
+      },
+    },
+    {
+      id: "pr-messen", typ: "praxis", titel: "Übung: Messschieber ablesen", blattNr: "PR-Ü01", render: function () {
+        var werte = [23.40, 41.65, 57.25];
+        var blocks = werte.map(function (v, i) {
+          return '<p style="margin-top:14px"><strong>Ablesung ' + (i + 1) + ':</strong> Wert = __________ mm</p>' +
+            '<div class="msch-halter">' + azMessschieber(v) + '</div>';
+        }).join("");
+        return '<div class="bl-meta"><span>Übung</span><span>Woche 1</span><span>Nonius 1/20 = 0,05 mm</span></div>' +
+          '<h3>Lies die drei Messschieber ab</h3><p>Ganze mm an der oberen (Haupt-)Skala vor dem roten Zeiger; die Hundertstel dort, wo die orange markierte Nonius-Linie mit einer Hauptlinie fluchtet.</p>' +
+          blocks +
+          '<details class="loesung-box"><summary>Lösung anzeigen</summary><ol class="ol">' +
+          '<li>23,40 mm</li><li>41,65 mm</li><li>57,25 mm</li></ol></details>';
+      },
+    },
+    {
+      id: "pr-toleranz", typ: "praxis", titel: "Übung: Grenzabmaße bestimmen (ISO 2768-m)", blattNr: "PR-Ü02", render: function () {
+        return '<div class="bl-meta"><span>Übung</span><span>Woche 2</span><span>DIN ISO 2768-1</span></div>' +
+          '<h3>Bestimme die Grenzabmaße (Klasse mittel)</h3>' +
+          '<table class="tab"><thead><tr><th>Nennmaß</th><th>Bereich</th><th>Grenzabmaß ±</th><th>Höchstmaß</th><th>Mindestmaß</th></tr></thead><tbody>' +
+          '<tr><td>8 mm</td><td>______</td><td>______</td><td>______</td><td>______</td></tr>' +
+          '<tr><td>45 mm</td><td>______</td><td>______</td><td>______</td><td>______</td></tr>' +
+          '<tr><td>150 mm</td><td>______</td><td>______</td><td>______</td><td>______</td></tr></tbody></table>' +
+          '<details class="loesung-box"><summary>Lösung anzeigen</summary>' +
+          '<table class="tab"><thead><tr><th>Nennmaß</th><th>Bereich</th><th>±</th><th>Höchstmaß</th><th>Mindestmaß</th></tr></thead><tbody>' +
+          '<tr><td>8</td><td>>6–30</td><td>0,2</td><td>8,2</td><td>7,8</td></tr>' +
+          '<tr><td>45</td><td>>30–120</td><td>0,3</td><td>45,3</td><td>44,7</td></tr>' +
+          '<tr><td>150</td><td>>120–400</td><td>0,5</td><td>150,5</td><td>149,5</td></tr></tbody></table></details>';
       },
     },
   ],
@@ -1388,6 +1806,119 @@ var GM_TG = [
     bausteine: bausteine,
   };
 })();
+
+
+/* ============================================================================
+   Modul-Inhalt: Zusammenbauen und Verbinden von Bauteilen (Fügen)
+   Rahmenplan: "Zusammenbauen u. Verbinden von Bauteilen u. Baugruppen" (4 Wo.)
+   Verknüpft mit der Projekt-Reihe (Haltewinkel verschrauben).
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+AZ_CONTENT["m6-fuegen"] = {
+  intro: "Fügen heißt Bauteile verbinden. Du lernst lösbare und unlösbare Verbindungen kennen und montierst " +
+    "eine Schraubverbindung am Projekt-Werkstück (Haltewinkel).",
+  bausteine: [
+    {
+      id: "fu-theorie", typ: "theorie", titel: "Theorie: Verbindungsarten", blattNr: "FU-T01", render: function () {
+        return '<div class="bl-meta"><span>Theorie</span><span>Woche 1</span></div>' +
+          '<h3>Lösbar oder unlösbar?</h3>' +
+          '<table class="tab"><thead><tr><th>Art</th><th>Beispiele</th><th>lösbar?</th></tr></thead><tbody>' +
+          '<tr><td>Schrauben</td><td>Schraube + Mutter + Scheibe, Gewinde</td><td>ja (zerstörungsfrei)</td></tr>' +
+          '<tr><td>Stecken/Klemmen</td><td>Stift, Passfeder, Klemmung</td><td>ja</td></tr>' +
+          '<tr><td>Nieten</td><td>Vollniet, Blindniet</td><td>nein</td></tr>' +
+          '<tr><td>Löten/Schweißen/Kleben</td><td>Weichlöten, MAG-Schweißen</td><td>nein</td></tr></tbody></table>' +
+          '<h3>Schraubverbindung</h3><p>Reihenfolge: <strong>Schraube – Scheibe – Bauteile – ggf. Scheibe – Mutter</strong>. Die Scheibe verteilt die Kraft und schützt die Oberfläche. Sicherung gegen Losdrehen z. B. durch Federring oder selbstsichernde Mutter.</p>' +
+          '<p class="frage">Frage 1: Nenne zwei unlösbare Verbindungen. ____________________</p>' +
+          '<p class="frage">Frage 2: Wozu dient die Unterlegscheibe? ____________________</p>';
+      },
+    },
+    {
+      id: "fu-zuordnen", typ: "praxis", titel: "Übung: Verbindungen zuordnen", blattNr: "FU-Ü01", render: function () {
+        return '<div class="bl-meta"><span>Übung</span><span>Woche 2</span></div>' +
+          '<h3>Ordne „lösbar“ (L) oder „unlösbar“ (U) zu</h3>' +
+          '<table class="tab"><thead><tr><th>Verbindung</th><th>L / U</th></tr></thead><tbody>' +
+          '<tr><td>Schraube + Mutter</td><td>____</td></tr><tr><td>Blindniet</td><td>____</td></tr>' +
+          '<tr><td>Weichlöten</td><td>____</td></tr><tr><td>Passfeder</td><td>____</td></tr>' +
+          '<tr><td>MAG-Schweißnaht</td><td>____</td></tr><tr><td>Klemmverbindung</td><td>____</td></tr></tbody></table>' +
+          '<details class="loesung-box"><summary>Lösung anzeigen</summary><p>Schraube+Mutter = L · Blindniet = U · Weichlöten = U · Passfeder = L · Schweißnaht = U · Klemmung = L.</p></details>';
+      },
+    },
+    {
+      id: "fu-montage", typ: "praxis", titel: "Übung: Haltewinkel verschrauben", blattNr: "FU-Ü02", render: function () {
+        return '<div class="bl-meta"><span>Übung / Montage</span><span>Woche 3</span></div>' +
+          '<div class="anknuepf">Baut auf der Projekt-Reihe auf: Grundplatte (GM-P2) + Anbauwinkel (GM-P3).</div>' +
+          '<h3>Montage-Schritte</h3>' +
+          '<div class="chk"><span class="box"></span>Bohrungen von Grundplatte und Winkel zur Deckung bringen</div>' +
+          '<div class="chk"><span class="box"></span>Schraube M6 mit Scheibe von unten durchstecken</div>' +
+          '<div class="chk"><span class="box"></span>Winkel auflegen, Scheibe + Mutter aufsetzen</div>' +
+          '<div class="chk"><span class="box"></span>handfest anziehen, Rechtwinkligkeit prüfen, dann festziehen</div>' +
+          '<h3>Prüfung</h3>' +
+          '<table class="tab"><thead><tr><th>Merkmal</th><th>Soll</th><th>Prüfmittel</th><th>i.O.</th></tr></thead><tbody>' +
+          '<tr><td>Rechtwinkligkeit</td><td>90° ±1°</td><td>Haarwinkel</td><td>☐</td></tr>' +
+          '<tr><td>Verschraubung fest</td><td>—</td><td>Sicht/Hand</td><td>☐</td></tr></tbody></table>' +
+          '<div class="unterschrift"><div>Azubi: __________________</div><div>Ausbilder: __________________</div><div>Datum: ____________</div></div>';
+      },
+    },
+  ],
+};
+
+
+/* ============================================================================
+   Modul-Inhalt: Vorbereitung Zwischenprüfung (Teil 1 der gestreckten Prüfung)
+   Rahmenplan: gestreckte Abschlussprüfung Teil 1 (2 Wo.)
+   Kombiniert die Inhalte des 1. Lehrjahres (Prüfungssimulation).
+   ==========================================================================*/
+window.AZ_CONTENT = window.AZ_CONTENT || {};
+
+AZ_CONTENT["m7-zp1"] = {
+  intro: "Vorbereitung auf Teil 1 der Abschlussprüfung: ein komplexes Prüfungsstück fertigen und prüfen sowie " +
+    "eine schriftliche Wiederholung aus allen Themen des 1. Lehrjahres.",
+  bausteine: [
+    {
+      id: "zp-info", typ: "aufgabe", titel: "Überblick: Prüfung Teil 1", blattNr: "ZP-A01", render: function () {
+        return '<div class="bl-meta"><span>Überblick</span><span>Woche 1</span></div>' +
+          '<h3>Gestreckte Abschlussprüfung — Teil 1</h3><p>Teil 1 findet am Ende des 1. bzw. Anfang des 2. Ausbildungsjahres statt und prüft die Grundlagen: ' +
+          '<strong>Fertigen eines Werkstücks</strong> (Metallbearbeitung) sowie <strong>schriftliche Aufgaben</strong> (technische Zeichnung, Messen, Toleranzen, Sicherheit).</p>' +
+          '<h3>So bereitest du dich vor</h3><ul class="ul"><li>Prüfungsstück nach Zeichnung fertigen (ZP-Ü01)</li>' +
+          '<li>schriftliche Wiederholung (ZP-Ü02)</li><li>Sicherheitsregeln &amp; Prüfmittel beherrschen</li></ul>';
+      },
+    },
+    {
+      id: "zp-stueck", typ: "praxis", titel: "Prüfungssimulation: Werkstück fertigen & prüfen", blattNr: "ZP-Ü01", render: function () {
+        return leseAufgabe({
+          meta: ["Prüfungsstück", "Woche 1", "ZP-Ü01"],
+          hinweis: "Fertige das Werkstück nach Zeichnung und prüfe es mit den richtigen Prüfmitteln (wie in der Prüfung).",
+          text: "Fertige die Halteplatte nach Zeichnung; halte alle Maße, die Passung ⌀12 H9 und das Gewinde M8 ein. Beantworte anschließend die Prüfungsfragen.",
+          api: AZ.parts.platte({ benennung: "Prüfungsstück", nummer: "ZP-190", w: 90, h: 50, t: 15, fase: 2, ra: "3,2", features: [{ typ: "bohrung", x: 25, y: 25, d: 12, passung: "H9" }, { typ: "gewinde", x: 65, y: 25, gew: "M8" }] }),
+          fragen: ["Welche Grenzabmaße gelten für die Länge 90 mm (ISO 2768-m)?",
+            "Mit welchem Prüfmittel prüfst du ⌀12 H9?",
+            "Welchen Kernloch-⌀ bohrst du für M8?",
+            "Welche PSA trägst du beim Bohren — und was ist verboten?"],
+          loesungen: ["±0,3 mm (Bereich >30–120).", "Grenzlehrdorn 12 H9.", "6,8 mm (DIN 13).",
+            "Schutzbrille, Sicherheitsschuhe, Gehörschutz; Handschuhe sind an der Bohrmaschine verboten (ISO 7010 P028)."],
+        });
+      },
+    },
+    {
+      id: "zp-schriftlich", typ: "theorie", titel: "Schriftliche Wiederholung (alle Themen)", blattNr: "ZP-Ü02", render: function () {
+        return '<div class="bl-meta"><span>Wiederholung</span><span>Woche 2</span><span>1. Lehrjahr gesamt</span></div>' +
+          '<h3>Fragen aus allen Modulen</h3>' +
+          '<p class="frage">1. Welche Form/Farbe hat ein Gebotszeichen? ____________________</p>' +
+          '<p class="frage">2. Nenne die Linienart für verdeckte Kanten. ____________________</p>' +
+          '<p class="frage">3. Berechne n für ⌀10 bei v_c = 35 m/min. ____________________</p>' +
+          '<p class="frage">4. Grenzabmaß für 45 mm nach ISO 2768-m? ____________________</p>' +
+          '<p class="frage">5. Kernloch-⌀ für M6? ____________________</p>' +
+          '<p class="frage">6. Ist H7/g6 eine Spiel- oder Presspassung? ____________________</p>' +
+          '<p class="frage">7. In welcher Reihenfolge gilt das TOP-Prinzip? ____________________</p>' +
+          '<details class="loesung-box"><summary>Lösung anzeigen</summary><ol class="ol">' +
+          '<li>Rund, blau (weißes Piktogramm).</li><li>Schmale Strichlinie.</li>' +
+          '<li>n = 35·1000/(π·10) ≈ 1114 min⁻¹.</li><li>±0,3 mm.</li><li>5,0 mm.</li>' +
+          '<li>Spielpassung.</li><li>Technisch → Organisatorisch → Personenbezogen.</li></ol></details>';
+      },
+    },
+  ],
+};
 
 
 /* ============================================================================
@@ -1643,12 +2174,101 @@ var GM_TG = [
     });
   }
 
+  /* ---------- View: Aufgabe erstellen (Creator) ---------- */
+  function viewCreator() {
+    setNav("tools");
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / Aufgabe erstellen</div>' +
+      '<p class="eyebrow">Werkzeug</p><h1>Aufgabe erstellen</h1>' +
+      '<p class="lead">Beschreibe ein Werkstück (Platte mit Bohrungen/Gewinden) — die App erzeugt daraus eine normgerechte Zeichnung mit Schnitt, Bemaßung und Prüfmaßen. Als Fertigzeichnung oder „zum Ergänzen“ druckbar.</p>' +
+      '<div class="creator">' +
+      '<div class="creator-form">' +
+      '<h3>Werkstück</h3>' +
+      '<div class="frow">Benennung <input type="text" id="c_ben" value="Übungsplatte"></div>' +
+      '<div class="frow">Nummer <input type="text" id="c_nr" value="AC-001" style="width:90px"></div>' +
+      '<div class="frow">Breite <input type="number" id="c_w" value="90"> Höhe <input type="number" id="c_h" value="50"> Dicke <input type="number" id="c_t" value="12"></div>' +
+      '<div class="frow">Toleranz <select id="c_tol"><option value="f">fein</option><option value="m" selected>mittel</option><option value="c">grob</option></select></div>' +
+      '<div class="frow">Fase <input type="number" id="c_fase" value="0" step="0.5"> ×45° &nbsp; Ra <input type="text" id="c_ra" value="" style="width:60px" placeholder="z.B. 3,2"></div>' +
+      '<h3>Bohrungen &amp; Gewinde</h3>' +
+      '<div id="c_feats"></div>' +
+      '<div class="addbtns"><button class="btn small" id="c_addb">+ Bohrung</button><button class="btn small" id="c_addg">+ Gewinde</button></div>' +
+      '<div class="btnrow"><button class="btn primary" id="c_print">🖨 Zeichnung drucken (PDF)</button></div>' +
+      '<p class="chk-hint">Tipp: x/y sind die Positionen der Bohrmitte in mm (von links/unten der Platte).</p>' +
+      '</div>' +
+      '<div>' +
+      '<div class="blatt-print"><div class="blatt-head"><span class="no">NEU</span><h2 id="c_title">Übungsplatte</h2><span class="app-tag">Azubi Cockpit</span></div>' +
+      '<div class="z-toggle" style="margin:4px 0 10px"><button class="btn small" id="c_toggle">Fertigzeichnung ⇄ Zum Ergänzen</button></div>' +
+      '<div id="c_preview"></div>' +
+      '<h3>Prüfmaße</h3><div id="c_masse"></div></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="footer">Erzeugt mit dem Teile-Generator (AZ.parts.platte) · normgerecht nach DIN ISO</div>' +
+      '</div>'
+    );
+    wireCreator();
+  }
+
+  function wireCreator() {
+    function gv(id) { var e = document.getElementById(id); return e ? e.value : ""; }
+    function num(id, d) { var v = parseFloat(gv(id)); return isNaN(v) ? d : v; }
+    function buildSpec() {
+      var spec = { benennung: gv("c_ben") || "Werkstück", nummer: gv("c_nr") || "AC-001", w: num("c_w", 80), h: num("c_h", 50), t: num("c_t", 10), toleranz: gv("c_tol"), features: [] };
+      var fase = num("c_fase", 0); if (fase > 0) spec.fase = fase;
+      var ra = (gv("c_ra") || "").trim(); if (ra) spec.ra = ra;
+      Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+        var typ = row.getAttribute("data-typ");
+        var x = parseFloat(row.querySelector(".f_x").value) || 0, y = parseFloat(row.querySelector(".f_y").value) || 0;
+        if (typ === "gewinde") spec.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
+        else { var f = { typ: "bohrung", x: x, y: y, d: parseFloat(row.querySelector(".f_d").value) || 6 }; if (row.querySelector(".f_pass").value === "H9") f.passung = "H9"; spec.features.push(f); }
+      });
+      return spec;
+    }
+    function refresh() {
+      var spec = buildSpec();
+      var t = document.getElementById("c_title"); if (t) t.textContent = spec.benennung;
+      try {
+        var api = AZ.parts.platte(spec);
+        document.getElementById("c_preview").innerHTML =
+          '<div class="aufgabe"><div class="zeichnung-halter z-fertig">' + api.svg("fertig") + '</div>' +
+          '<div class="zeichnung-halter z-erg">' + api.svg("ergaenzen") + '</div></div>';
+        document.getElementById("c_masse").innerHTML = azMasseTable(api);
+      } catch (e) { document.getElementById("c_preview").innerHTML = '<p class="chk-hint">Eingabe prüfen: ' + e.message + '</p>'; }
+    }
+    function bindRow(div) {
+      div.querySelector(".rmfeat").addEventListener("click", function () { div.remove(); refresh(); });
+      Array.prototype.forEach.call(div.querySelectorAll("input,select"), function (el) { el.addEventListener("input", refresh); });
+    }
+    function addFeat(typ, x, y) {
+      var wrap = document.getElementById("c_feats"), div = document.createElement("div");
+      div.className = "featrow"; div.setAttribute("data-typ", typ);
+      if (typ === "gewinde")
+        div.innerHTML = '<span class="ftag">Gewinde</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ' +
+          '<select class="f_gew"><option>M4</option><option>M5</option><option selected>M6</option><option>M8</option><option>M10</option><option>M12</option></select><button class="rmfeat" title="entfernen">✕</button>';
+      else
+        div.innerHTML = '<span class="ftag">Bohrung</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ⌀<input class="f_d" type="number" step="0.1" value="8"> ' +
+          '<select class="f_pass"><option value="">ohne</option><option value="H9">H9</option></select><button class="rmfeat" title="entfernen">✕</button>';
+      wrap.appendChild(div); bindRow(div); refresh();
+    }
+    ["c_ben", "c_nr", "c_w", "c_h", "c_t", "c_tol", "c_fase", "c_ra"].forEach(function (id) { var e = document.getElementById(id); if (e) e.addEventListener("input", refresh); });
+    document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
+    document.getElementById("c_addg").addEventListener("click", function () { addFeat("gewinde"); });
+    document.getElementById("c_toggle").addEventListener("click", function () { var a = document.querySelector("#c_preview .aufgabe"); if (a) a.classList.toggle("erg"); });
+    document.getElementById("c_print").addEventListener("click", function () {
+      document.body.classList.add("print-blatt"); window.print();
+      setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
+    });
+    // Startbeispiel
+    addFeat("bohrung", 25, 25); addFeat("gewinde", 65, 25);
+  }
+
   /* ---------- Router ---------- */
   function route() {
     var hash = location.hash.replace(/^#\/?/, "");
     var parts = hash.split("/").filter(Boolean);
     window.scrollTo(0, 0);
     if (parts.length === 0) return viewStart();
+    if (parts[0] === "tools") return viewCreator();
     if (parts[0] === "lj") return viewLj(parts[1]);
     if (parts[0] === "modul" && parts.length >= 3) return viewBlatt(parts[1], parts[2]);
     if (parts[0] === "modul") return viewModul(parts[1]);

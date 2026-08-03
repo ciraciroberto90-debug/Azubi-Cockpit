@@ -61,7 +61,20 @@ Fase, Oberfläche Ra, Schnitt mit Schraffur — sowie `AZ.parts.biegeteil(...)`.
 mit Theorie + generierten Aufgaben. Das Cockpit zeigt einen **empfohlenen Lernpfad**
 und einen **filterbaren Katalog** (Thema · Schwierigkeit).
 
+## Aufgabe erstellen (Werkzeug)
+
+Über den Menüpunkt **＋ Erstellen** (`#/tools/erstellen`) kannst du selbst ein Werkstück
+beschreiben (Maße + Bohrungen/Gewinde) und bekommst live eine normgerechte Zeichnung
+mit Schnitt, Bemaßung und Prüfmaßen — als Fertigzeichnung oder „zum Ergänzen“ druckbar.
+
 ## Status
 
-- **Fertig:** 1. Lehrjahr — *Arbeitssicherheit* und **kompletter *Grundkurs Metall*** (Katalog mit Lernpfad, generierte Zeichnungen, Prüfmaße, Lösungen).
-- **Gerüst:** alle weiteren Module über 3,5 Jahre (Struktur, Rahmenplan-Bezug, Lernfeld-Zuordnung stehen) — werden mit dem Generator im gleichen Standard gefüllt.
+- **1. Lehrjahr komplett** (7 Module, 61 Blätter):
+  - m1 *Arbeitssicherheit* (ISO 7010, TOP-Prinzip)
+  - m2 *Technisches Zeichnen* (Katalog: Linien/Ansichten, Bemaßung, Schnitte, Toleranzen/Passungen, Oberfläche/Schriftfeld — Lese- & Ergänzen-Übungen)
+  - m3 *Planen & Organisieren* (Arbeitsplan, Werkzeugliste)
+  - m4 *Prüfen, Anreißen & Kennzeichnen* (Messschieber-Ablesung, Toleranzberechnung)
+  - m5 *Grundkurs Metall* (Katalog über 11 Wochen, 24 generierte Zeichnungen + Projekt-Reihe)
+  - m6 *Fügen* (Verbindungsarten, Montage Haltewinkel)
+  - m7 *Zwischenprüfung Teil 1* (Prüfungsstück + schriftliche Wiederholung)
+- **Gerüst:** 2. und 3. Lehrjahr (Struktur, Rahmenplan-Bezug, Lernfeld-Zuordnung stehen) — werden mit dem Generator im gleichen Standard gefüllt.

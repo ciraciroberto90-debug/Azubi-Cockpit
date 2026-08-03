@@ -251,12 +251,101 @@
     });
   }
 
+  /* ---------- View: Aufgabe erstellen (Creator) ---------- */
+  function viewCreator() {
+    setNav("tools");
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / Aufgabe erstellen</div>' +
+      '<p class="eyebrow">Werkzeug</p><h1>Aufgabe erstellen</h1>' +
+      '<p class="lead">Beschreibe ein Werkstück (Platte mit Bohrungen/Gewinden) — die App erzeugt daraus eine normgerechte Zeichnung mit Schnitt, Bemaßung und Prüfmaßen. Als Fertigzeichnung oder „zum Ergänzen“ druckbar.</p>' +
+      '<div class="creator">' +
+      '<div class="creator-form">' +
+      '<h3>Werkstück</h3>' +
+      '<div class="frow">Benennung <input type="text" id="c_ben" value="Übungsplatte"></div>' +
+      '<div class="frow">Nummer <input type="text" id="c_nr" value="AC-001" style="width:90px"></div>' +
+      '<div class="frow">Breite <input type="number" id="c_w" value="90"> Höhe <input type="number" id="c_h" value="50"> Dicke <input type="number" id="c_t" value="12"></div>' +
+      '<div class="frow">Toleranz <select id="c_tol"><option value="f">fein</option><option value="m" selected>mittel</option><option value="c">grob</option></select></div>' +
+      '<div class="frow">Fase <input type="number" id="c_fase" value="0" step="0.5"> ×45° &nbsp; Ra <input type="text" id="c_ra" value="" style="width:60px" placeholder="z.B. 3,2"></div>' +
+      '<h3>Bohrungen &amp; Gewinde</h3>' +
+      '<div id="c_feats"></div>' +
+      '<div class="addbtns"><button class="btn small" id="c_addb">+ Bohrung</button><button class="btn small" id="c_addg">+ Gewinde</button></div>' +
+      '<div class="btnrow"><button class="btn primary" id="c_print">🖨 Zeichnung drucken (PDF)</button></div>' +
+      '<p class="chk-hint">Tipp: x/y sind die Positionen der Bohrmitte in mm (von links/unten der Platte).</p>' +
+      '</div>' +
+      '<div>' +
+      '<div class="blatt-print"><div class="blatt-head"><span class="no">NEU</span><h2 id="c_title">Übungsplatte</h2><span class="app-tag">Azubi Cockpit</span></div>' +
+      '<div class="z-toggle" style="margin:4px 0 10px"><button class="btn small" id="c_toggle">Fertigzeichnung ⇄ Zum Ergänzen</button></div>' +
+      '<div id="c_preview"></div>' +
+      '<h3>Prüfmaße</h3><div id="c_masse"></div></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="footer">Erzeugt mit dem Teile-Generator (AZ.parts.platte) · normgerecht nach DIN ISO</div>' +
+      '</div>'
+    );
+    wireCreator();
+  }
+
+  function wireCreator() {
+    function gv(id) { var e = document.getElementById(id); return e ? e.value : ""; }
+    function num(id, d) { var v = parseFloat(gv(id)); return isNaN(v) ? d : v; }
+    function buildSpec() {
+      var spec = { benennung: gv("c_ben") || "Werkstück", nummer: gv("c_nr") || "AC-001", w: num("c_w", 80), h: num("c_h", 50), t: num("c_t", 10), toleranz: gv("c_tol"), features: [] };
+      var fase = num("c_fase", 0); if (fase > 0) spec.fase = fase;
+      var ra = (gv("c_ra") || "").trim(); if (ra) spec.ra = ra;
+      Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+        var typ = row.getAttribute("data-typ");
+        var x = parseFloat(row.querySelector(".f_x").value) || 0, y = parseFloat(row.querySelector(".f_y").value) || 0;
+        if (typ === "gewinde") spec.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
+        else { var f = { typ: "bohrung", x: x, y: y, d: parseFloat(row.querySelector(".f_d").value) || 6 }; if (row.querySelector(".f_pass").value === "H9") f.passung = "H9"; spec.features.push(f); }
+      });
+      return spec;
+    }
+    function refresh() {
+      var spec = buildSpec();
+      var t = document.getElementById("c_title"); if (t) t.textContent = spec.benennung;
+      try {
+        var api = AZ.parts.platte(spec);
+        document.getElementById("c_preview").innerHTML =
+          '<div class="aufgabe"><div class="zeichnung-halter z-fertig">' + api.svg("fertig") + '</div>' +
+          '<div class="zeichnung-halter z-erg">' + api.svg("ergaenzen") + '</div></div>';
+        document.getElementById("c_masse").innerHTML = azMasseTable(api);
+      } catch (e) { document.getElementById("c_preview").innerHTML = '<p class="chk-hint">Eingabe prüfen: ' + e.message + '</p>'; }
+    }
+    function bindRow(div) {
+      div.querySelector(".rmfeat").addEventListener("click", function () { div.remove(); refresh(); });
+      Array.prototype.forEach.call(div.querySelectorAll("input,select"), function (el) { el.addEventListener("input", refresh); });
+    }
+    function addFeat(typ, x, y) {
+      var wrap = document.getElementById("c_feats"), div = document.createElement("div");
+      div.className = "featrow"; div.setAttribute("data-typ", typ);
+      if (typ === "gewinde")
+        div.innerHTML = '<span class="ftag">Gewinde</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ' +
+          '<select class="f_gew"><option>M4</option><option>M5</option><option selected>M6</option><option>M8</option><option>M10</option><option>M12</option></select><button class="rmfeat" title="entfernen">✕</button>';
+      else
+        div.innerHTML = '<span class="ftag">Bohrung</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ⌀<input class="f_d" type="number" step="0.1" value="8"> ' +
+          '<select class="f_pass"><option value="">ohne</option><option value="H9">H9</option></select><button class="rmfeat" title="entfernen">✕</button>';
+      wrap.appendChild(div); bindRow(div); refresh();
+    }
+    ["c_ben", "c_nr", "c_w", "c_h", "c_t", "c_tol", "c_fase", "c_ra"].forEach(function (id) { var e = document.getElementById(id); if (e) e.addEventListener("input", refresh); });
+    document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
+    document.getElementById("c_addg").addEventListener("click", function () { addFeat("gewinde"); });
+    document.getElementById("c_toggle").addEventListener("click", function () { var a = document.querySelector("#c_preview .aufgabe"); if (a) a.classList.toggle("erg"); });
+    document.getElementById("c_print").addEventListener("click", function () {
+      document.body.classList.add("print-blatt"); window.print();
+      setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
+    });
+    // Startbeispiel
+    addFeat("bohrung", 25, 25); addFeat("gewinde", 65, 25);
+  }
+
   /* ---------- Router ---------- */
   function route() {
     var hash = location.hash.replace(/^#\/?/, "");
     var parts = hash.split("/").filter(Boolean);
     window.scrollTo(0, 0);
     if (parts.length === 0) return viewStart();
+    if (parts[0] === "tools") return viewCreator();
     if (parts[0] === "lj") return viewLj(parts[1]);
     if (parts[0] === "modul" && parts.length >= 3) return viewBlatt(parts[1], parts[2]);
     if (parts[0] === "modul") return viewModul(parts[1]);
