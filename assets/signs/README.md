@@ -16,12 +16,12 @@ Standalone-Datei.
 | `E003.svg`     | Erste Hilfe                        |
 | `F001.svg`     | Feuerlöscher                       |
 
-## Woher?
+## Quelle der aktuell hinterlegten Dateien
 
-Frei lizenzierte ISO-7010-SVGs findest du z. B. auf **Wikimedia Commons**
-(Dateinamen dort: `ISO 7010 M004.svg`, `ISO 7010 M003.svg`, …). Speichere sie unter
-den obigen Kurznamen in diesen Ordner. Alternativ die Zeichen aus dem betrieblichen
-DGUV-/Sicherheitszeichen-Satz verwenden.
+Die 7 SVGs in diesem Ordner stammen aus dem npm-Paket **`@iso-safety-signs/core`**
+(Lizenz **MIT**) — offizielle ISO-7010-Piktogramme. Ersetzen kannst du sie jederzeit
+durch andere lizenzierte Dateien (z. B. Wikimedia Commons `ISO 7010 M004.svg`, … oder
+den betrieblichen DGUV-Zeichensatz) unter den obigen Kurznamen.
 
 ## Danach
 

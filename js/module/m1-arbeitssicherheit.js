@@ -114,7 +114,7 @@ AZ_CONTENT["m1-arbeitssicherheit"] = {
           azSignCard("augenschutz") + azSignCard("gehoerschutz") + azSignCard("fussschutz") +
           azSignCard("handschuhverbot") + azSignCard("warnung") + azSignCard("ersthilfe") + azSignCard("feuerloescher") +
           '</div>' +
-          '<p class="chk-hint">Piktogramme nach DIN EN ISO 7010 (Registriernummern). Offizielle Zeichensätze lassen sich einsetzen — siehe assets/signs.</p>' +
+          '<p class="chk-hint">Offizielle Piktogramme nach DIN EN ISO 7010 (Registriernummern) — Grafiken MIT-lizenziert.</p>' +
           '<p class="frage">Frage 1: Welche Form und Farbe hat ein Gebotszeichen (z. B. „Augenschutz benutzen“)? ____________________</p>' +
           '<h3>2. Persönliche Schutzausrüstung (PSA)</h3>' +
           '<p>Typisch in der Metallwerkstatt: <strong>Schutzbrille, Sicherheitsschuhe, Gehörschutz</strong>. ' +
