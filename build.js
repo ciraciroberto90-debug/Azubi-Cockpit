@@ -7,11 +7,29 @@
 var fs = require("fs");
 function read(p) { return fs.readFileSync(p, "utf8"); }
 
+/* Offizielle Sicherheitszeichen aus assets/signs/<CODE>.svg einlesen und
+   js/signs-official.js daraus erzeugen (leer, falls keine Dateien vorhanden). */
+(function () {
+  var overrides = {};
+  try {
+    fs.readdirSync("assets/signs").forEach(function (f) {
+      var mm = f.match(/^([A-Za-z]\d{3})\.svg$/);
+      if (mm) overrides[mm[1].toUpperCase()] = read("assets/signs/" + f).trim();
+    });
+  } catch (e) { /* Ordner fehlt -> leer */ }
+  fs.writeFileSync("js/signs-official.js",
+    "/* auto-generiert von build.js aus assets/signs/ */\n" +
+    "window.AZ_SIGN_OVERRIDES = " + JSON.stringify(overrides) + ";\n");
+  var n = Object.keys(overrides).length;
+  console.log(n ? (n + " offizielle Sicherheitszeichen eingebettet.") : "Keine offiziellen Zeichen — Nachbildungen aktiv.");
+})();
+
 var css = read("css/cockpit.css") + "\n" + read("css/print.css");
 var js = [
   "js/data/curriculum.js",
   "js/lib/zeichnung.js",
   "js/lib/teile.js",
+  "js/signs-official.js",
   "js/module/_helpers.js",
   "js/module/m1-arbeitssicherheit.js",
   "js/module/m2-technisches-zeichnen.js",

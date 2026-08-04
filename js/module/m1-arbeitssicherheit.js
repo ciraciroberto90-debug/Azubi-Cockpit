@@ -20,26 +20,35 @@ function azSign(kind) {
     '<circle cx="24" cy="24" r="20" fill="none" stroke="' + B.rot + '" stroke-width="4"/>' +
     '<line x1="10.5" y1="37.5" x2="37.5" y2="10.5" stroke="' + B.rot + '" stroke-width="4"/>'; }
   switch (kind) {
-    case "augenschutz": // M004
+    case "augenschutz": // M004 — Schutzbrille
       code = "M004"; name = "Augenschutz benutzen";
-      s = gebot('<g fill="#fff"><path d="M10 20 h28 v2 l-2 1 c-1 4 -4 6 -7 6 c-3 0 -5 -1.5 -6 -4 h-1.9 c-1 2.5 -3 4 -6 4 c-3 0 -6 -2 -7 -6 l-2 -1 z"/></g>');
+      s = gebot('<g fill="#fff">' +
+        '<path d="M8 22 q0-3 3-3 h8 q3 0 3 3 v3 q0 3-3 3 h-8 q-3 0-3-3 z"/>' +
+        '<path d="M40 22 q0-3 -3-3 h-8 q-3 0 -3 3 v3 q0 3 3 3 h8 q3 0 3-3 z"/>' +
+        '<rect x="22" y="21" width="4" height="3"/></g>' +
+        '<path d="M8 21 L4 18 M40 21 L44 18" stroke="#fff" stroke-width="2" fill="none"/>');
       break;
-    case "gehoerschutz": // M003
+    case "gehoerschutz": // M003 — Kapselgehörschützer
       code = "M003"; name = "Gehörschutz benutzen";
-      s = gebot('<g fill="none" stroke="#fff" stroke-width="3"><path d="M13 26 a11 11 0 0 1 22 0"/></g>' +
-        '<circle cx="24" cy="27" r="7" fill="#fff"/>' +
-        '<rect x="9.5" y="24" width="6" height="9" rx="3" fill="#fff"/><rect x="32.5" y="24" width="6" height="9" rx="3" fill="#fff"/>');
+      s = gebot('<path d="M12 28 a12 12 0 0 1 24 0" fill="none" stroke="#fff" stroke-width="3.2"/>' +
+        '<circle cx="24" cy="29" r="7.5" fill="#fff"/>' +
+        '<rect x="9.5" y="25.5" width="6.5" height="9.5" rx="3" fill="#fff"/>' +
+        '<rect x="32" y="25.5" width="6.5" height="9.5" rx="3" fill="#fff"/>');
       break;
-    case "fussschutz": // M008
+    case "fussschutz": // M008 — Sicherheitsschuh (Profil)
       code = "M008"; name = "Fußschutz benutzen";
-      s = gebot('<path d="M18 12 h6 v16 c0 0 0 2 3 3 l9 3 v4 h-21 c-2 0 -3 -1 -3 -3 z" fill="#fff"/>');
+      s = gebot('<path d="M16 13 h6 v14 l16 4.5 v4.5 h-22 z" fill="#fff"/>' +
+        '<line x1="15" y1="34" x2="38" y2="34" stroke="' + B.blau + '" stroke-width="1.4"/>');
       break;
-    case "handschuhverbot": // P028
+    case "handschuhverbot": // P028 — Benutzen von Handschuhen verboten
       code = "P028"; name = "Benutzen von Handschuhen verboten";
-      s = verbot('<g fill="' + B.schwarz + '"><rect x="18" y="22" width="12" height="11" rx="2"/>' +
-        '<rect x="18.5" y="15.5" width="2.4" height="8" rx="1.2"/><rect x="21.5" y="14.5" width="2.4" height="9" rx="1.2"/>' +
-        '<rect x="24.5" y="14.5" width="2.4" height="9" rx="1.2"/><rect x="27.3" y="15.5" width="2.4" height="8" rx="1.2"/>' +
-        '<rect x="14.5" y="24" width="5" height="2.6" rx="1.3" transform="rotate(-35 17 25)"/></g>');
+      s = verbot('<g fill="' + B.schwarz + '">' +
+        '<path d="M18 34 v-9 h12 v9 z"/>' +
+        '<rect x="18.4" y="15" width="2.6" height="11" rx="1.3"/>' +
+        '<rect x="21.6" y="13.5" width="2.6" height="12.5" rx="1.3"/>' +
+        '<rect x="24.7" y="13.5" width="2.6" height="12.5" rx="1.3"/>' +
+        '<rect x="27.8" y="15" width="2.6" height="11" rx="1.3"/>' +
+        '<path d="M18 27 l-4.5 -2.2 a2 2 0 0 1 1.8 -3.6 l3.4 1.7 z"/></g>');
       break;
     case "warnung": // W001 allgemeines Warnzeichen
       code = "W001"; name = "Allgemeines Warnzeichen";
@@ -58,7 +67,12 @@ function azSign(kind) {
         '<path d="M26 13 q7 0 7 7" stroke="#fff" stroke-width="2" fill="none"/>';
       break;
   }
-  return { svg: '<svg viewBox="0 0 48 48" class="sign" role="img" aria-label="' + name + '">' + s + "</svg>", code: code, name: name };
+  // Wenn eine offizielle, lizenzierte Datei hinterlegt ist -> diese verwenden.
+  var official = (window.AZ_SIGN_OVERRIDES || {})[code];
+  var svg = official
+    ? '<span class="sign sign-official" role="img" aria-label="' + name + '">' + official + "</span>"
+    : '<svg viewBox="0 0 48 48" class="sign" role="img" aria-label="' + name + '">' + s + "</svg>";
+  return { svg: svg, code: code, name: name, official: !!official };
 }
 function azSignCard(kind) {
   var x = azSign(kind);
@@ -100,6 +114,7 @@ AZ_CONTENT["m1-arbeitssicherheit"] = {
           azSignCard("augenschutz") + azSignCard("gehoerschutz") + azSignCard("fussschutz") +
           azSignCard("handschuhverbot") + azSignCard("warnung") + azSignCard("ersthilfe") + azSignCard("feuerloescher") +
           '</div>' +
+          '<p class="chk-hint">Piktogramme nach DIN EN ISO 7010 (Registriernummern). Offizielle Zeichensätze lassen sich einsetzen — siehe assets/signs.</p>' +
           '<p class="frage">Frage 1: Welche Form und Farbe hat ein Gebotszeichen (z. B. „Augenschutz benutzen“)? ____________________</p>' +
           '<h3>2. Persönliche Schutzausrüstung (PSA)</h3>' +
           '<p>Typisch in der Metallwerkstatt: <strong>Schutzbrille, Sicherheitsschuhe, Gehörschutz</strong>. ' +
