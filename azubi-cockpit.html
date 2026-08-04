@@ -226,6 +226,22 @@ section{margin-top:clamp(34px,5vw,60px)}
 .rmfeat{cursor:pointer;border:1px solid var(--line-strong);background:var(--panel);border-radius:4px;color:var(--accent);font-weight:700;padding:2px 7px}
 .addbtns{display:flex;gap:8px;margin:8px 0}
 
+/* Skizzen-Modus (Mini-CAD) */
+.sk-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}
+.sk-tools,.sk-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sk-tool{font-family:var(--font-mono);font-size:12.5px;padding:6px 12px;border-radius:100px;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink-2);cursor:pointer}
+.sk-tool:hover{border-color:var(--accent);color:var(--ink)}
+.sk-tool.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.sk-chk{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.sk-wrap{margin-top:12px;padding:0;overflow:hidden}
+#skcanvas{display:block;width:100%;height:auto;background:#fdfdfb;cursor:crosshair;touch-action:none}
+.sk-vis{stroke:#1a1a1a;stroke-width:0.5;fill:none}
+.sk-center{stroke:#1a1a1a;stroke-width:0.3;fill:none;stroke-dasharray:6 1.2 0.8 1.2}
+.sk-dim{stroke:#1a1a1a;stroke-width:0.3;fill:none}
+.sk-dimtx{fill:#1a1a1a;font-family:var(--font-mono);font-size:3px}
+.sk-text{font-family:system-ui,sans-serif;font-size:4px;fill:#1a1a1a}
+.sk-prev{stroke:var(--accent);stroke-width:0.6;fill:none;stroke-dasharray:2 1}
+
 /* ============================================================================
    Druck: nur das aktuelle Blatt drucken (DIN A4), Rest ausblenden.
    Aktiviert über <body class="print-blatt"> beim Drucken eines Blatts.
@@ -261,6 +277,7 @@ section{margin-top:clamp(34px,5vw,60px)}
     <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>
     <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>
     <a data-k="tools" href="#/tools/erstellen">＋ Erstellen</a>
+    <a data-k="skizze" href="#/tools/skizze">✎ Skizze</a>
     <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>
   </nav>
 </header>
@@ -699,6 +716,13 @@ AZ.Pen.prototype.poly = function (points, cls) {
   this._p('<path d="' + d + '" class="' + cls + '" fill="none"/>');
 };
 
+/* Polygon-Fläche füllen (Materialtönung) */
+AZ.Pen.prototype.fillPoly = function (points) {
+  var self = this;
+  var d = "M" + points.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  this._p('<path d="' + d + '" class="az-part"/>');
+};
+
 /* Oberflächenangabe DIN EN ISO 21920 (Grundsymbol + Ra), feste mm-Größe */
 AZ.Pen.prototype.oberflaeche = function (x, y, ra) {
   var X = this.X(x), Y = this.Y(y);
@@ -1115,6 +1139,109 @@ function azBuildScheibe(spec, modus) {
     }
   });
   return b.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.winkel(spec) — L-Profil (flache Winkelplatte), Ansicht + Seitenansicht
+   spec:{ benennung,nummer,werkstoff,toleranz, a,b (Schenkel), s (Schenkelbreite),
+          t (Dicke), bohrungen:[{x,y,d}] }
+   ========================================================================== */
+AZ.parts.winkel = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", s: 10, t: 8, bohrungen: [] }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildWinkel(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz, rows = [
+        { name: "Schenkel a", soll: AZ.mm(spec.a) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.a, kl)), mittel: "Messschieber" },
+        { name: "Schenkel b", soll: AZ.mm(spec.b) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.b, kl)), mittel: "Messschieber" },
+        { name: "Schenkelbreite", soll: AZ.mm(spec.s) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.s, kl)), mittel: "Messschieber" },
+        { name: "Dicke", soll: AZ.mm(spec.t) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.t, kl)), mittel: "Messschieber" },
+      ];
+      (spec.bohrungen || []).forEach(function (f, i) { rows.push({ name: "Bohrung " + (i + 1), soll: "⌀" + AZ.mm(f.d), tol: "±" + AZ.mm(AZ.grenzabmass(f.d, kl)), mittel: "Messschieber" }); });
+      return rows;
+    },
+  };
+};
+function azBuildWinkel(spec, modus) {
+  var voll = (modus === "fertig");
+  var a = spec.a, b = spec.b, s = spec.s, t = spec.t, boh = spec.bohrungen || [];
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var gapS = 14, sideX = a + gapS;
+  var world = { x: -16, y: -18, w: a + gapS + t + 30, h: b + 40 };
+  B.zeichnung(world, function (p) {
+    var outline = [[0, 0], [s, 0], [s, b - s], [a, b - s], [a, b], [0, b]];
+    p.fillPoly(outline); p.poly(outline, "az-vis");
+    (voll ? boh : boh.slice(0, 1)).forEach(function (f) {
+      p.circle(f.x, f.y, f.d / 2, "az-vis");
+      p.center(f.x, f.y - f.d / 2 - 3, f.x, f.y + f.d / 2 + 3); p.center(f.x - f.d / 2 - 3, f.y, f.x + f.d / 2 + 3, f.y);
+      if (voll) p.dimDia(f.x, f.y, f.d / 2, -45, null, { text: "⌀" + AZ.mm(f.d) });
+    });
+    if (voll) {
+      p.rect(sideX, 0, t, b, "az-vis");
+      boh.forEach(function (f) { p.hidden(sideX, f.y - f.d / 2, sideX + t, f.y - f.d / 2); p.hidden(sideX, f.y + f.d / 2, sideX + t, f.y + f.d / 2); });
+      p.dimH(0, a, -8, 0); p.dimV(0, b, -14, 0);
+      p.dimH(0, s, b + 8, b); p.dimV(b - s, b, a + 6, a);
+      p.dimH(sideX, sideX + t, b + 8, b);
+    } else {
+      p._p('<rect x="' + p.X(sideX) + '" y="' + p.Y(0) + '" width="' + (t * p.s).toFixed(2) + '" height="' + (b * p.s).toFixed(2) + '" class="az-thin" stroke-dasharray="1.5 1.5" fill="none"/>');
+      p.dimH(0, a, -8, 0, { text: "?", cls: "az-todo" }); p.dimV(0, b, -14, 0, { text: "?", cls: "az-todo" });
+      p.text(sideX - 1, b + 6, "Seitenansicht ergänzen", "az-note");
+    }
+  });
+  return B.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.buchse(spec) — Buchse/Hülse (Längsschnitt + Stirnansicht)
+   spec:{ benennung,nummer,werkstoff,toleranz, da,di,l, passung, fase }
+   ========================================================================== */
+AZ.parts.buchse = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", fase: 1 }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildBuchse(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz;
+      return [
+        { name: "Außen-⌀", soll: "⌀" + AZ.mm(spec.da), tol: "±" + AZ.mm(AZ.grenzabmass(spec.da, kl)), mittel: "Messschieber" },
+        { name: "Bohrung", soll: "⌀" + AZ.mm(spec.di) + (spec.passung ? " " + spec.passung : ""), tol: spec.passung === "H9" ? AZ.passungH9(spec.di).text : "±" + AZ.mm(AZ.grenzabmass(spec.di, kl)), mittel: spec.passung ? "Grenzlehrdorn" : "Innenmessschieber" },
+        { name: "Länge", soll: AZ.mm(spec.l) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.l, kl)), mittel: "Messschieber" },
+      ];
+    },
+  };
+};
+function azBuildBuchse(spec, modus) {
+  var voll = (modus === "fertig");
+  var da = spec.da, di = spec.di, l = spec.l, f = spec.fase || 0, ay = da / 2;
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var gap = 16, cx = l + gap + da / 2;
+  var world = { x: -18, y: -18, w: l + gap + da + 40, h: da + 40 };
+  B.zeichnung(world, function (p) {
+    if (voll) {
+      var outline = f ? [[0, f], [f, 0], [l - f, 0], [l, f], [l, da - f], [l - f, da], [f, da], [0, da - f]] : [[0, 0], [l, 0], [l, da], [0, da]];
+      var bore = [[0, ay - di / 2], [l, ay - di / 2], [l, ay + di / 2], [0, ay + di / 2]];
+      p.hatchPoly(outline, [bore], 2.4); p.poly(outline, "az-vis");
+      p.line(0, ay - di / 2, l, ay - di / 2, "az-vis"); p.line(0, ay + di / 2, l, ay + di / 2, "az-vis");
+      p.center(-4, ay, l + 4, ay);
+      p.dimH(0, l, da + 8, da);
+      if (f) p.text(l - f - 6, -2, AZ.mm(f) + "×45°", "az-dimtx");
+    } else {
+      p._p('<rect x="' + p.X(0) + '" y="' + p.Y(0) + '" width="' + (l * p.s).toFixed(2) + '" height="' + (da * p.s).toFixed(2) + '" class="az-thin" stroke-dasharray="1.5 1.5" fill="none"/>');
+      p.text(l / 2 - 14, ay, "Längsschnitt ergänzen", "az-note");
+      p.dimH(0, l, da + 8, da, { text: "?", cls: "az-todo" });
+    }
+    // Stirnansicht (Kreise) rechts
+    p.circle(cx, ay, da / 2, "az-vis"); p.circle(cx, ay, di / 2, "az-vis");
+    p.center(cx, -5, cx, da + 5); p.center(cx - da / 2 - 5, ay, cx + da / 2 + 5, ay);
+    if (voll) {
+      p.dimDia(cx, ay, da / 2, -45, null, { text: "⌀" + AZ.mm(da) });
+      p.dimDia(cx, ay, di / 2, 135, null, { text: "⌀" + AZ.mm(di) + (spec.passung ? " " + spec.passung : "") });
+    } else {
+      p.dimDia(cx, ay, da / 2, -45, null, { text: "⌀?", cls: "az-todo" });
+    }
+  });
+  return B.svg();
 }
 
 function azBuildBiege(spec, modus) {
@@ -2308,7 +2435,8 @@ AZ_CONTENT["m7-zp1"] = {
   /* ---------- View: Aufgabe erstellen (Creator, mehrere Teile-Typen) ---------- */
   var C_TYPES = [
     { key: "platte", label: "Platte" }, { key: "welle", label: "Welle (Rundteil)" },
-    { key: "scheibe", label: "Scheibe / Flansch" }, { key: "biegeteil", label: "Biegeteil" },
+    { key: "scheibe", label: "Scheibe / Flansch" }, { key: "winkel", label: "Winkel (L-Profil)" },
+    { key: "buchse", label: "Buchse / Hülse" }, { key: "biegeteil", label: "Biegeteil" },
     { key: "bolzen", label: "Bolzen (Außengewinde)" },
   ];
   function viewCreator() {
@@ -2361,6 +2489,11 @@ AZ_CONTENT["m7-zp1"] = {
         '<div class="frow">Bohrung ⌀ <input type="number" id="s_b" value="20"> Passung <select id="s_pass"><option value="">ohne</option><option value="H9">H9</option></select></div>' +
         '<div class="frow">Fase <input type="number" id="s_fase" value="0" step="0.5"> ×45°</div>' +
         '<h3>Lochkreis (Anzahl 0 = keiner)</h3><div class="frow">Anzahl <input type="number" id="s_n" value="4"> TK-⌀ <input type="number" id="s_tk" value="60"> Loch-⌀ <input type="number" id="s_d" value="9"></div>',
+      winkel: '<div class="frow">Schenkel a <input type="number" id="k_a" value="70"> Schenkel b <input type="number" id="k_b" value="50"></div>' +
+        '<div class="frow">Schenkelbreite <input type="number" id="k_s" value="12"> Dicke <input type="number" id="k_t" value="8"></div>' +
+        '<h3>Bohrungen</h3><div id="c_feats"></div><div class="addbtns"><button type="button" class="btn small" id="c_addb">+ Bohrung</button></div>',
+      buchse: '<div class="frow">Außen-⌀ <input type="number" id="u_da" value="40"> Bohrung ⌀ <input type="number" id="u_di" value="25"></div>' +
+        '<div class="frow">Länge <input type="number" id="u_l" value="50"> Passung <select id="u_pass"><option value="">ohne</option><option value="H9">H9</option></select> Fase <input type="number" id="u_fase" value="1" step="0.5"></div>',
       biegeteil: '<div class="frow">Schenkel a <input type="number" id="b_a" value="60"> Schenkel b <input type="number" id="b_b" value="40"></div>' +
         '<div class="frow">Dicke <input type="number" id="b_t" value="3"> Radius <input type="number" id="b_r" value="3"> Winkel <input type="number" id="b_w" value="90">°</div>',
       bolzen: '<div class="frow">Gewinde <select id="z_gew">' + gewOpts10 + '</select> Länge <input type="number" id="z_l" value="60"> Fase <input type="number" id="z_fase" value="1.5" step="0.5"></div>',
@@ -2394,6 +2527,18 @@ AZ_CONTENT["m7-zp1"] = {
         if (num("s_fase", 0) > 0) sp2.fase = num("s_fase", 0);
         if (num("s_n", 0) > 0) sp2.lochkreis = { n: num("s_n", 4), tk: num("s_tk", 60), d: num("s_d", 9) };
         return AZ.parts.scheibe(sp2);
+      }
+      if (type === "winkel") {
+        var boh = [];
+        Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+          boh.push({ x: parseFloat(row.querySelector(".f_x").value) || 0, y: parseFloat(row.querySelector(".f_y").value) || 0, d: parseFloat(row.querySelector(".f_d").value) || 6 });
+        });
+        return AZ.parts.winkel({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, a: num("k_a", 70), b: num("k_b", 50), s: num("k_s", 12), t: num("k_t", 8), bohrungen: boh });
+      }
+      if (type === "buchse") {
+        var sp3 = { benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, da: num("u_da", 40), di: num("u_di", 25), l: num("u_l", 50), fase: num("u_fase", 1) };
+        if (gv("u_pass") === "H9") sp3.passung = "H9";
+        return AZ.parts.buchse(sp3);
       }
       if (type === "biegeteil")
         return AZ.parts.biegeteil({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, a: num("b_a", 60), b: num("b_b", 40), t: num("b_t", 3), r: num("b_r", 3), winkel: num("b_w", 90) });
@@ -2443,6 +2588,9 @@ AZ_CONTENT["m7-zp1"] = {
       } else if (type === "welle") {
         document.getElementById("c_addseg").addEventListener("click", function () { addSeg(); });
         addSeg(20, 30); addSeg(30, 40); addSeg(16, 25);
+      } else if (type === "winkel") {
+        document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
+        addFeat("bohrung", 6, 25, 9); addFeat("bohrung", 45, 6, 9);
       } else { refresh(); }
     }
 
@@ -2456,13 +2604,160 @@ AZ_CONTENT["m7-zp1"] = {
     renderFields("platte");
   }
 
+  /* ---------- View: Freihand-Skizze (Mini-CAD) ---------- */
+  var SK_TOOLS = [
+    { k: "linie", l: "Linie" }, { k: "center", l: "Mittellinie" }, { k: "kreis", l: "Kreis" },
+    { k: "rechteck", l: "Rechteck" }, { k: "mass", l: "Maß" }, { k: "text", l: "Text" }, { k: "loeschen", l: "Löschen" },
+  ];
+  function viewSkizze() {
+    setNav("skizze");
+    var tools = SK_TOOLS.map(function (t, i) { return '<button type="button" class="sk-tool' + (i === 0 ? " active" : "") + '" data-tool="' + t.k + '">' + t.l + '</button>'; }).join("");
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / Skizze</div>' +
+      '<p class="eyebrow">Werkzeug</p><h1>Skizze zeichnen</h1>' +
+      '<p class="lead">Freies Zeichenbrett mit Raster (5 mm) und Fang. Werkzeug wählen, zwei Punkte klicken. Maße werden in Millimetern gemessen. Zum Drucken/Speichern als PDF.</p>' +
+      '<div class="sk-bar"><div class="sk-tools">' + tools + '</div>' +
+      '<div class="sk-actions">' +
+      '<label class="sk-chk"><input type="checkbox" id="sk-snap" checked> Raster-Fang</label>' +
+      '<button type="button" class="btn small" id="sk-undo">↶ Rückgängig</button>' +
+      '<button type="button" class="btn small" id="sk-clear">Leeren</button>' +
+      '<button type="button" class="btn primary" id="sk-print">🖨 Drucken (PDF)</button>' +
+      '</div></div>' +
+      '<p class="chk-hint" id="sk-hint">Werkzeug: Linie — ersten Punkt klicken.</p>' +
+      '<div class="blatt-print sk-wrap">' +
+      '<svg id="skcanvas" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+      '<pattern id="skg" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#d7ddd8" stroke-width="0.2"/></pattern>' +
+      '<pattern id="skG" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#c2cabf" stroke-width="0.35"/></pattern>' +
+      '<marker id="skae" markerWidth="3.2" markerHeight="2.4" refX="3" refY="1.2" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0.3 L3,1.2 L0,2.1 Z" fill="#1a1a1a"/></marker>' +
+      '<marker id="skas" markerWidth="3.2" markerHeight="2.4" refX="0.2" refY="1.2" orient="auto" markerUnits="userSpaceOnUse"><path d="M3.2,0.3 L0.2,1.2 L3.2,2.1 Z" fill="#1a1a1a"/></marker>' +
+      '</defs>' +
+      '<rect x="0" y="0" width="260" height="180" fill="#fdfdfb"/>' +
+      '<rect x="0" y="0" width="260" height="180" fill="url(#skg)"/>' +
+      '<rect x="0" y="0" width="260" height="180" fill="url(#skG)"/>' +
+      '<rect x="6" y="6" width="248" height="168" fill="none" stroke="#1a1a1a" stroke-width="0.4"/>' +
+      '<g id="sk-content"></g><g id="sk-preview"></g>' +
+      '<circle id="sk-cursor" r="1.1" fill="none" stroke="#E4531D" stroke-width="0.4" style="display:none"/>' +
+      '<text id="sk-title" x="250" y="171" text-anchor="end" class="sk-text" style="fill:#888"></text>' +
+      '</svg></div>' +
+      '<div class="frow" style="margin-top:10px">Titel <input type="text" id="sk-titel" value="Skizze" style="width:180px"></div>' +
+      '<div class="footer">Skizzen-Modus · Raster 5 mm · Maße in mm</div>' +
+      '</div>'
+    );
+    wireSkizze();
+  }
+
+  function wireSkizze() {
+    var svg = document.getElementById("skcanvas"), content = document.getElementById("sk-content"),
+      preview = document.getElementById("sk-preview"), cursor = document.getElementById("sk-cursor"),
+      hint = document.getElementById("sk-hint");
+    var GRID = 5, els = [], tool = "linie", pending = null, snap = true;
+
+    function toMM(evt) {
+      var r = svg.getBoundingClientRect();
+      var x = (evt.clientX - r.left) / r.width * 260, y = (evt.clientY - r.top) / r.height * 180;
+      if (snap) { x = Math.round(x / GRID) * GRID; y = Math.round(y / GRID) * GRID; }
+      return { x: Math.max(0, Math.min(260, +x.toFixed(1))), y: Math.max(0, Math.min(180, +y.toFixed(1))) };
+    }
+    function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+    function makeEl(t, p1, p2) {
+      if (t === "linie") return { type: "line", cls: "vis", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      if (t === "center") return { type: "line", cls: "center", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      if (t === "kreis") return { type: "circle", cx: p1.x, cy: p1.y, r: +Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)).toFixed(1) };
+      if (t === "rechteck") return { type: "rect", x: Math.min(p1.x, p2.x), y: Math.min(p1.y, p2.y), w: Math.abs(p2.x - p1.x), h: Math.abs(p2.y - p1.y) };
+      if (t === "mass") return { type: "dim", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      return null;
+    }
+    function elSvg(e, prev) {
+      var c = prev ? "sk-prev" : ("sk-" + (e.cls || "vis"));
+      if (e.type === "line") return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" class="' + (prev ? "sk-prev" : (e.cls === "center" ? "sk-center" : "sk-vis")) + '"/>';
+      if (e.type === "circle") return '<circle cx="' + e.cx + '" cy="' + e.cy + '" r="' + e.r + '" class="' + c + '" fill="none"/>';
+      if (e.type === "rect") return '<rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" class="' + c + '" fill="none"/>';
+      if (e.type === "text") return '<text x="' + e.x + '" y="' + e.y + '" class="sk-text">' + esc(e.text) + '</text>';
+      if (e.type === "dim") {
+        var dx = e.x2 - e.x1, dy = e.y2 - e.y1, dist = Math.sqrt(dx * dx + dy * dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        var mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
+        if (ang > 90 || ang < -90) ang += 180;
+        return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" class="' + (prev ? "sk-prev" : "sk-dim") + '" marker-start="url(#skas)" marker-end="url(#skae)"/>' +
+          (prev ? "" : '<text x="' + mx + '" y="' + (my - 1.4) + '" text-anchor="middle" class="sk-dimtx" transform="rotate(' + ang.toFixed(1) + ' ' + mx + ' ' + my + ')">' + Math.round(dist) + '</text>');
+      }
+      return "";
+    }
+    function render() { content.innerHTML = els.map(function (e) { return elSvg(e, false); }).join(""); }
+    function setHint(msg) { if (hint) hint.textContent = msg; }
+    function toolLabel() { var f = SK_TOOLS.filter(function (t) { return t.k === tool; })[0]; return f ? f.l : tool; }
+
+    function segDist(px, py, x1, y1, x2, y2) {
+      var dx = x2 - x1, dy = y2 - y1, L2 = dx * dx + dy * dy;
+      var tt = L2 ? ((px - x1) * dx + (py - y1) * dy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
+      return Math.sqrt(Math.pow(px - (x1 + tt * dx), 2) + Math.pow(py - (y1 + tt * dy), 2));
+    }
+    function elDist(e, p) {
+      if (e.type === "line" || e.type === "dim") return segDist(p.x, p.y, e.x1, e.y1, e.x2, e.y2);
+      if (e.type === "circle") return Math.abs(Math.sqrt(Math.pow(p.x - e.cx, 2) + Math.pow(p.y - e.cy, 2)) - e.r);
+      if (e.type === "rect") return Math.min(segDist(p.x, p.y, e.x, e.y, e.x + e.w, e.y), segDist(p.x, p.y, e.x, e.y + e.h, e.x + e.w, e.y + e.h), segDist(p.x, p.y, e.x, e.y, e.x, e.y + e.h), segDist(p.x, p.y, e.x + e.w, e.y, e.x + e.w, e.y + e.h));
+      if (e.type === "text") return Math.sqrt(Math.pow(p.x - e.x, 2) + Math.pow(p.y - e.y, 2));
+      return 1e9;
+    }
+    function deleteNear(p) {
+      var best = -1, bd = 4;
+      els.forEach(function (e, i) { var d = elDist(e, p); if (d < bd) { bd = d; best = i; } });
+      if (best >= 0) { els.splice(best, 1); render(); }
+    }
+
+    svg.addEventListener("click", function (evt) {
+      var p = toMM(evt);
+      if (tool === "text") { var tx = window.prompt("Text:"); if (tx) { els.push({ type: "text", x: p.x, y: p.y, text: tx }); render(); } return; }
+      if (tool === "loeschen") { deleteNear(p); return; }
+      if (!pending) { pending = p; setHint(toolLabel() + " — zweiten Punkt klicken (Esc bricht ab)."); }
+      else { var e = makeEl(tool, pending, p); if (e) els.push(e); pending = null; preview.innerHTML = ""; render(); setHint(toolLabel() + " — ersten Punkt klicken."); }
+    });
+    svg.addEventListener("mousemove", function (evt) {
+      var p = toMM(evt);
+      cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", p.y); cursor.style.display = "";
+      if (pending && tool !== "text" && tool !== "loeschen") { var e = makeEl(tool, pending, p); preview.innerHTML = e ? elSvg(e, true) : ""; }
+    });
+    svg.addEventListener("mouseleave", function () { cursor.style.display = "none"; });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { pending = null; preview.innerHTML = ""; setHint(toolLabel() + " — ersten Punkt klicken."); } });
+
+    Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (btn) {
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (b) { b.classList.toggle("active", b === btn); });
+        tool = btn.getAttribute("data-tool"); pending = null; preview.innerHTML = "";
+        setHint(toolLabel() + (tool === "text" ? " — Position klicken." : tool === "loeschen" ? " — Element anklicken." : " — ersten Punkt klicken."));
+      });
+    });
+    document.getElementById("sk-snap").addEventListener("change", function () { snap = this.checked; });
+    document.getElementById("sk-undo").addEventListener("click", function () { els.pop(); pending = null; preview.innerHTML = ""; render(); });
+    document.getElementById("sk-clear").addEventListener("click", function () { if (window.confirm("Skizze leeren?")) { els = []; pending = null; preview.innerHTML = ""; render(); } });
+    document.getElementById("sk-titel").addEventListener("input", function () { document.getElementById("sk-title").textContent = this.value; });
+    document.getElementById("sk-print").addEventListener("click", function () {
+      document.body.classList.add("print-blatt"); window.print();
+      setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
+    });
+    document.getElementById("sk-title").textContent = "Skizze";
+    if (location.hash.indexOf("demo") >= 0) {
+      els = [
+        { type: "rect", x: 70, y: 55, w: 120, h: 70 },
+        { type: "circle", cx: 130, cy: 90, r: 22 },
+        { type: "line", cls: "center", x1: 130, y1: 45, x2: 130, y2: 135 },
+        { type: "line", cls: "center", x1: 60, y1: 90, x2: 200, y2: 90 },
+        { type: "dim", x1: 70, y1: 140, x2: 190, y2: 140 },
+        { type: "dim", x1: 55, y1: 55, x2: 55, y2: 125 },
+        { type: "text", x: 78, y: 50, text: "Demo-Skizze" },
+      ];
+      render();
+    }
+  }
+
   /* ---------- Router ---------- */
   function route() {
     var hash = location.hash.replace(/^#\/?/, "");
     var parts = hash.split("/").filter(Boolean);
     window.scrollTo(0, 0);
     if (parts.length === 0) return viewStart();
-    if (parts[0] === "tools") return viewCreator();
+    if (parts[0] === "tools") return parts[1] === "skizze" ? viewSkizze() : viewCreator();
     if (parts[0] === "lj") return viewLj(parts[1]);
     if (parts[0] === "modul" && parts.length >= 3) return viewBlatt(parts[1], parts[2]);
     if (parts[0] === "modul") return viewModul(parts[1]);

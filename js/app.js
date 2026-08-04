@@ -238,7 +238,8 @@
   /* ---------- View: Aufgabe erstellen (Creator, mehrere Teile-Typen) ---------- */
   var C_TYPES = [
     { key: "platte", label: "Platte" }, { key: "welle", label: "Welle (Rundteil)" },
-    { key: "scheibe", label: "Scheibe / Flansch" }, { key: "biegeteil", label: "Biegeteil" },
+    { key: "scheibe", label: "Scheibe / Flansch" }, { key: "winkel", label: "Winkel (L-Profil)" },
+    { key: "buchse", label: "Buchse / Hülse" }, { key: "biegeteil", label: "Biegeteil" },
     { key: "bolzen", label: "Bolzen (Außengewinde)" },
   ];
   function viewCreator() {
@@ -291,6 +292,11 @@
         '<div class="frow">Bohrung ⌀ <input type="number" id="s_b" value="20"> Passung <select id="s_pass"><option value="">ohne</option><option value="H9">H9</option></select></div>' +
         '<div class="frow">Fase <input type="number" id="s_fase" value="0" step="0.5"> ×45°</div>' +
         '<h3>Lochkreis (Anzahl 0 = keiner)</h3><div class="frow">Anzahl <input type="number" id="s_n" value="4"> TK-⌀ <input type="number" id="s_tk" value="60"> Loch-⌀ <input type="number" id="s_d" value="9"></div>',
+      winkel: '<div class="frow">Schenkel a <input type="number" id="k_a" value="70"> Schenkel b <input type="number" id="k_b" value="50"></div>' +
+        '<div class="frow">Schenkelbreite <input type="number" id="k_s" value="12"> Dicke <input type="number" id="k_t" value="8"></div>' +
+        '<h3>Bohrungen</h3><div id="c_feats"></div><div class="addbtns"><button type="button" class="btn small" id="c_addb">+ Bohrung</button></div>',
+      buchse: '<div class="frow">Außen-⌀ <input type="number" id="u_da" value="40"> Bohrung ⌀ <input type="number" id="u_di" value="25"></div>' +
+        '<div class="frow">Länge <input type="number" id="u_l" value="50"> Passung <select id="u_pass"><option value="">ohne</option><option value="H9">H9</option></select> Fase <input type="number" id="u_fase" value="1" step="0.5"></div>',
       biegeteil: '<div class="frow">Schenkel a <input type="number" id="b_a" value="60"> Schenkel b <input type="number" id="b_b" value="40"></div>' +
         '<div class="frow">Dicke <input type="number" id="b_t" value="3"> Radius <input type="number" id="b_r" value="3"> Winkel <input type="number" id="b_w" value="90">°</div>',
       bolzen: '<div class="frow">Gewinde <select id="z_gew">' + gewOpts10 + '</select> Länge <input type="number" id="z_l" value="60"> Fase <input type="number" id="z_fase" value="1.5" step="0.5"></div>',
@@ -324,6 +330,18 @@
         if (num("s_fase", 0) > 0) sp2.fase = num("s_fase", 0);
         if (num("s_n", 0) > 0) sp2.lochkreis = { n: num("s_n", 4), tk: num("s_tk", 60), d: num("s_d", 9) };
         return AZ.parts.scheibe(sp2);
+      }
+      if (type === "winkel") {
+        var boh = [];
+        Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+          boh.push({ x: parseFloat(row.querySelector(".f_x").value) || 0, y: parseFloat(row.querySelector(".f_y").value) || 0, d: parseFloat(row.querySelector(".f_d").value) || 6 });
+        });
+        return AZ.parts.winkel({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, a: num("k_a", 70), b: num("k_b", 50), s: num("k_s", 12), t: num("k_t", 8), bohrungen: boh });
+      }
+      if (type === "buchse") {
+        var sp3 = { benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, da: num("u_da", 40), di: num("u_di", 25), l: num("u_l", 50), fase: num("u_fase", 1) };
+        if (gv("u_pass") === "H9") sp3.passung = "H9";
+        return AZ.parts.buchse(sp3);
       }
       if (type === "biegeteil")
         return AZ.parts.biegeteil({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, a: num("b_a", 60), b: num("b_b", 40), t: num("b_t", 3), r: num("b_r", 3), winkel: num("b_w", 90) });
@@ -373,6 +391,9 @@
       } else if (type === "welle") {
         document.getElementById("c_addseg").addEventListener("click", function () { addSeg(); });
         addSeg(20, 30); addSeg(30, 40); addSeg(16, 25);
+      } else if (type === "winkel") {
+        document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
+        addFeat("bohrung", 6, 25, 9); addFeat("bohrung", 45, 6, 9);
       } else { refresh(); }
     }
 
@@ -386,13 +407,160 @@
     renderFields("platte");
   }
 
+  /* ---------- View: Freihand-Skizze (Mini-CAD) ---------- */
+  var SK_TOOLS = [
+    { k: "linie", l: "Linie" }, { k: "center", l: "Mittellinie" }, { k: "kreis", l: "Kreis" },
+    { k: "rechteck", l: "Rechteck" }, { k: "mass", l: "Maß" }, { k: "text", l: "Text" }, { k: "loeschen", l: "Löschen" },
+  ];
+  function viewSkizze() {
+    setNav("skizze");
+    var tools = SK_TOOLS.map(function (t, i) { return '<button type="button" class="sk-tool' + (i === 0 ? " active" : "") + '" data-tool="' + t.k + '">' + t.l + '</button>'; }).join("");
+    app.innerHTML = h(
+      '<div class="wrap">' +
+      '<div class="crumb"><a href="#/">Cockpit</a> / Skizze</div>' +
+      '<p class="eyebrow">Werkzeug</p><h1>Skizze zeichnen</h1>' +
+      '<p class="lead">Freies Zeichenbrett mit Raster (5 mm) und Fang. Werkzeug wählen, zwei Punkte klicken. Maße werden in Millimetern gemessen. Zum Drucken/Speichern als PDF.</p>' +
+      '<div class="sk-bar"><div class="sk-tools">' + tools + '</div>' +
+      '<div class="sk-actions">' +
+      '<label class="sk-chk"><input type="checkbox" id="sk-snap" checked> Raster-Fang</label>' +
+      '<button type="button" class="btn small" id="sk-undo">↶ Rückgängig</button>' +
+      '<button type="button" class="btn small" id="sk-clear">Leeren</button>' +
+      '<button type="button" class="btn primary" id="sk-print">🖨 Drucken (PDF)</button>' +
+      '</div></div>' +
+      '<p class="chk-hint" id="sk-hint">Werkzeug: Linie — ersten Punkt klicken.</p>' +
+      '<div class="blatt-print sk-wrap">' +
+      '<svg id="skcanvas" viewBox="0 0 260 180" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+      '<pattern id="skg" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#d7ddd8" stroke-width="0.2"/></pattern>' +
+      '<pattern id="skG" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#c2cabf" stroke-width="0.35"/></pattern>' +
+      '<marker id="skae" markerWidth="3.2" markerHeight="2.4" refX="3" refY="1.2" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0.3 L3,1.2 L0,2.1 Z" fill="#1a1a1a"/></marker>' +
+      '<marker id="skas" markerWidth="3.2" markerHeight="2.4" refX="0.2" refY="1.2" orient="auto" markerUnits="userSpaceOnUse"><path d="M3.2,0.3 L0.2,1.2 L3.2,2.1 Z" fill="#1a1a1a"/></marker>' +
+      '</defs>' +
+      '<rect x="0" y="0" width="260" height="180" fill="#fdfdfb"/>' +
+      '<rect x="0" y="0" width="260" height="180" fill="url(#skg)"/>' +
+      '<rect x="0" y="0" width="260" height="180" fill="url(#skG)"/>' +
+      '<rect x="6" y="6" width="248" height="168" fill="none" stroke="#1a1a1a" stroke-width="0.4"/>' +
+      '<g id="sk-content"></g><g id="sk-preview"></g>' +
+      '<circle id="sk-cursor" r="1.1" fill="none" stroke="#E4531D" stroke-width="0.4" style="display:none"/>' +
+      '<text id="sk-title" x="250" y="171" text-anchor="end" class="sk-text" style="fill:#888"></text>' +
+      '</svg></div>' +
+      '<div class="frow" style="margin-top:10px">Titel <input type="text" id="sk-titel" value="Skizze" style="width:180px"></div>' +
+      '<div class="footer">Skizzen-Modus · Raster 5 mm · Maße in mm</div>' +
+      '</div>'
+    );
+    wireSkizze();
+  }
+
+  function wireSkizze() {
+    var svg = document.getElementById("skcanvas"), content = document.getElementById("sk-content"),
+      preview = document.getElementById("sk-preview"), cursor = document.getElementById("sk-cursor"),
+      hint = document.getElementById("sk-hint");
+    var GRID = 5, els = [], tool = "linie", pending = null, snap = true;
+
+    function toMM(evt) {
+      var r = svg.getBoundingClientRect();
+      var x = (evt.clientX - r.left) / r.width * 260, y = (evt.clientY - r.top) / r.height * 180;
+      if (snap) { x = Math.round(x / GRID) * GRID; y = Math.round(y / GRID) * GRID; }
+      return { x: Math.max(0, Math.min(260, +x.toFixed(1))), y: Math.max(0, Math.min(180, +y.toFixed(1))) };
+    }
+    function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+    function makeEl(t, p1, p2) {
+      if (t === "linie") return { type: "line", cls: "vis", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      if (t === "center") return { type: "line", cls: "center", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      if (t === "kreis") return { type: "circle", cx: p1.x, cy: p1.y, r: +Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)).toFixed(1) };
+      if (t === "rechteck") return { type: "rect", x: Math.min(p1.x, p2.x), y: Math.min(p1.y, p2.y), w: Math.abs(p2.x - p1.x), h: Math.abs(p2.y - p1.y) };
+      if (t === "mass") return { type: "dim", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      return null;
+    }
+    function elSvg(e, prev) {
+      var c = prev ? "sk-prev" : ("sk-" + (e.cls || "vis"));
+      if (e.type === "line") return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" class="' + (prev ? "sk-prev" : (e.cls === "center" ? "sk-center" : "sk-vis")) + '"/>';
+      if (e.type === "circle") return '<circle cx="' + e.cx + '" cy="' + e.cy + '" r="' + e.r + '" class="' + c + '" fill="none"/>';
+      if (e.type === "rect") return '<rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" class="' + c + '" fill="none"/>';
+      if (e.type === "text") return '<text x="' + e.x + '" y="' + e.y + '" class="sk-text">' + esc(e.text) + '</text>';
+      if (e.type === "dim") {
+        var dx = e.x2 - e.x1, dy = e.y2 - e.y1, dist = Math.sqrt(dx * dx + dy * dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        var mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
+        if (ang > 90 || ang < -90) ang += 180;
+        return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" class="' + (prev ? "sk-prev" : "sk-dim") + '" marker-start="url(#skas)" marker-end="url(#skae)"/>' +
+          (prev ? "" : '<text x="' + mx + '" y="' + (my - 1.4) + '" text-anchor="middle" class="sk-dimtx" transform="rotate(' + ang.toFixed(1) + ' ' + mx + ' ' + my + ')">' + Math.round(dist) + '</text>');
+      }
+      return "";
+    }
+    function render() { content.innerHTML = els.map(function (e) { return elSvg(e, false); }).join(""); }
+    function setHint(msg) { if (hint) hint.textContent = msg; }
+    function toolLabel() { var f = SK_TOOLS.filter(function (t) { return t.k === tool; })[0]; return f ? f.l : tool; }
+
+    function segDist(px, py, x1, y1, x2, y2) {
+      var dx = x2 - x1, dy = y2 - y1, L2 = dx * dx + dy * dy;
+      var tt = L2 ? ((px - x1) * dx + (py - y1) * dy) / L2 : 0; tt = Math.max(0, Math.min(1, tt));
+      return Math.sqrt(Math.pow(px - (x1 + tt * dx), 2) + Math.pow(py - (y1 + tt * dy), 2));
+    }
+    function elDist(e, p) {
+      if (e.type === "line" || e.type === "dim") return segDist(p.x, p.y, e.x1, e.y1, e.x2, e.y2);
+      if (e.type === "circle") return Math.abs(Math.sqrt(Math.pow(p.x - e.cx, 2) + Math.pow(p.y - e.cy, 2)) - e.r);
+      if (e.type === "rect") return Math.min(segDist(p.x, p.y, e.x, e.y, e.x + e.w, e.y), segDist(p.x, p.y, e.x, e.y + e.h, e.x + e.w, e.y + e.h), segDist(p.x, p.y, e.x, e.y, e.x, e.y + e.h), segDist(p.x, p.y, e.x + e.w, e.y, e.x + e.w, e.y + e.h));
+      if (e.type === "text") return Math.sqrt(Math.pow(p.x - e.x, 2) + Math.pow(p.y - e.y, 2));
+      return 1e9;
+    }
+    function deleteNear(p) {
+      var best = -1, bd = 4;
+      els.forEach(function (e, i) { var d = elDist(e, p); if (d < bd) { bd = d; best = i; } });
+      if (best >= 0) { els.splice(best, 1); render(); }
+    }
+
+    svg.addEventListener("click", function (evt) {
+      var p = toMM(evt);
+      if (tool === "text") { var tx = window.prompt("Text:"); if (tx) { els.push({ type: "text", x: p.x, y: p.y, text: tx }); render(); } return; }
+      if (tool === "loeschen") { deleteNear(p); return; }
+      if (!pending) { pending = p; setHint(toolLabel() + " — zweiten Punkt klicken (Esc bricht ab)."); }
+      else { var e = makeEl(tool, pending, p); if (e) els.push(e); pending = null; preview.innerHTML = ""; render(); setHint(toolLabel() + " — ersten Punkt klicken."); }
+    });
+    svg.addEventListener("mousemove", function (evt) {
+      var p = toMM(evt);
+      cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", p.y); cursor.style.display = "";
+      if (pending && tool !== "text" && tool !== "loeschen") { var e = makeEl(tool, pending, p); preview.innerHTML = e ? elSvg(e, true) : ""; }
+    });
+    svg.addEventListener("mouseleave", function () { cursor.style.display = "none"; });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { pending = null; preview.innerHTML = ""; setHint(toolLabel() + " — ersten Punkt klicken."); } });
+
+    Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (btn) {
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (b) { b.classList.toggle("active", b === btn); });
+        tool = btn.getAttribute("data-tool"); pending = null; preview.innerHTML = "";
+        setHint(toolLabel() + (tool === "text" ? " — Position klicken." : tool === "loeschen" ? " — Element anklicken." : " — ersten Punkt klicken."));
+      });
+    });
+    document.getElementById("sk-snap").addEventListener("change", function () { snap = this.checked; });
+    document.getElementById("sk-undo").addEventListener("click", function () { els.pop(); pending = null; preview.innerHTML = ""; render(); });
+    document.getElementById("sk-clear").addEventListener("click", function () { if (window.confirm("Skizze leeren?")) { els = []; pending = null; preview.innerHTML = ""; render(); } });
+    document.getElementById("sk-titel").addEventListener("input", function () { document.getElementById("sk-title").textContent = this.value; });
+    document.getElementById("sk-print").addEventListener("click", function () {
+      document.body.classList.add("print-blatt"); window.print();
+      setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
+    });
+    document.getElementById("sk-title").textContent = "Skizze";
+    if (location.hash.indexOf("demo") >= 0) {
+      els = [
+        { type: "rect", x: 70, y: 55, w: 120, h: 70 },
+        { type: "circle", cx: 130, cy: 90, r: 22 },
+        { type: "line", cls: "center", x1: 130, y1: 45, x2: 130, y2: 135 },
+        { type: "line", cls: "center", x1: 60, y1: 90, x2: 200, y2: 90 },
+        { type: "dim", x1: 70, y1: 140, x2: 190, y2: 140 },
+        { type: "dim", x1: 55, y1: 55, x2: 55, y2: 125 },
+        { type: "text", x: 78, y: 50, text: "Demo-Skizze" },
+      ];
+      render();
+    }
+  }
+
   /* ---------- Router ---------- */
   function route() {
     var hash = location.hash.replace(/^#\/?/, "");
     var parts = hash.split("/").filter(Boolean);
     window.scrollTo(0, 0);
     if (parts.length === 0) return viewStart();
-    if (parts[0] === "tools") return viewCreator();
+    if (parts[0] === "tools") return parts[1] === "skizze" ? viewSkizze() : viewCreator();
     if (parts[0] === "lj") return viewLj(parts[1]);
     if (parts[0] === "modul" && parts.length >= 3) return viewBlatt(parts[1], parts[2]);
     if (parts[0] === "modul") return viewModul(parts[1]);

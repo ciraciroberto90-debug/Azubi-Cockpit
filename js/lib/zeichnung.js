@@ -278,6 +278,13 @@ AZ.Pen.prototype.poly = function (points, cls) {
   this._p('<path d="' + d + '" class="' + cls + '" fill="none"/>');
 };
 
+/* Polygon-Fläche füllen (Materialtönung) */
+AZ.Pen.prototype.fillPoly = function (points) {
+  var self = this;
+  var d = "M" + points.map(function (p) { return self.X(p[0]) + "," + self.Y(p[1]); }).join(" L") + " Z";
+  this._p('<path d="' + d + '" class="az-part"/>');
+};
+
 /* Oberflächenangabe DIN EN ISO 21920 (Grundsymbol + Ra), feste mm-Größe */
 AZ.Pen.prototype.oberflaeche = function (x, y, ra) {
   var X = this.X(x), Y = this.Y(y);

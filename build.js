@@ -60,6 +60,7 @@ var html =
   '    <a data-k="lj2" href="#/lj/2">2. Lehrjahr</a>\n' +
   '    <a data-k="lj3" href="#/lj/3">3. Lehrjahr</a>\n' +
   '    <a data-k="tools" href="#/tools/erstellen">＋ Erstellen</a>\n' +
+  '    <a data-k="skizze" href="#/tools/skizze">✎ Skizze</a>\n' +
   '    <a data-k="theme" href="#" id="themeToggle" title="Hell/Dunkel">◐</a>\n' +
   "  </nav>\n</header>\n" +
   '<main id="app"></main>\n' +

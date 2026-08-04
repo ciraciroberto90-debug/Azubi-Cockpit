@@ -359,6 +359,109 @@ function azBuildScheibe(spec, modus) {
   return b.svg();
 }
 
+/* ==========================================================================
+   AZ.parts.winkel(spec) — L-Profil (flache Winkelplatte), Ansicht + Seitenansicht
+   spec:{ benennung,nummer,werkstoff,toleranz, a,b (Schenkel), s (Schenkelbreite),
+          t (Dicke), bohrungen:[{x,y,d}] }
+   ========================================================================== */
+AZ.parts.winkel = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", s: 10, t: 8, bohrungen: [] }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildWinkel(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz, rows = [
+        { name: "Schenkel a", soll: AZ.mm(spec.a) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.a, kl)), mittel: "Messschieber" },
+        { name: "Schenkel b", soll: AZ.mm(spec.b) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.b, kl)), mittel: "Messschieber" },
+        { name: "Schenkelbreite", soll: AZ.mm(spec.s) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.s, kl)), mittel: "Messschieber" },
+        { name: "Dicke", soll: AZ.mm(spec.t) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.t, kl)), mittel: "Messschieber" },
+      ];
+      (spec.bohrungen || []).forEach(function (f, i) { rows.push({ name: "Bohrung " + (i + 1), soll: "⌀" + AZ.mm(f.d), tol: "±" + AZ.mm(AZ.grenzabmass(f.d, kl)), mittel: "Messschieber" }); });
+      return rows;
+    },
+  };
+};
+function azBuildWinkel(spec, modus) {
+  var voll = (modus === "fertig");
+  var a = spec.a, b = spec.b, s = spec.s, t = spec.t, boh = spec.bohrungen || [];
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var gapS = 14, sideX = a + gapS;
+  var world = { x: -16, y: -18, w: a + gapS + t + 30, h: b + 40 };
+  B.zeichnung(world, function (p) {
+    var outline = [[0, 0], [s, 0], [s, b - s], [a, b - s], [a, b], [0, b]];
+    p.fillPoly(outline); p.poly(outline, "az-vis");
+    (voll ? boh : boh.slice(0, 1)).forEach(function (f) {
+      p.circle(f.x, f.y, f.d / 2, "az-vis");
+      p.center(f.x, f.y - f.d / 2 - 3, f.x, f.y + f.d / 2 + 3); p.center(f.x - f.d / 2 - 3, f.y, f.x + f.d / 2 + 3, f.y);
+      if (voll) p.dimDia(f.x, f.y, f.d / 2, -45, null, { text: "⌀" + AZ.mm(f.d) });
+    });
+    if (voll) {
+      p.rect(sideX, 0, t, b, "az-vis");
+      boh.forEach(function (f) { p.hidden(sideX, f.y - f.d / 2, sideX + t, f.y - f.d / 2); p.hidden(sideX, f.y + f.d / 2, sideX + t, f.y + f.d / 2); });
+      p.dimH(0, a, -8, 0); p.dimV(0, b, -14, 0);
+      p.dimH(0, s, b + 8, b); p.dimV(b - s, b, a + 6, a);
+      p.dimH(sideX, sideX + t, b + 8, b);
+    } else {
+      p._p('<rect x="' + p.X(sideX) + '" y="' + p.Y(0) + '" width="' + (t * p.s).toFixed(2) + '" height="' + (b * p.s).toFixed(2) + '" class="az-thin" stroke-dasharray="1.5 1.5" fill="none"/>');
+      p.dimH(0, a, -8, 0, { text: "?", cls: "az-todo" }); p.dimV(0, b, -14, 0, { text: "?", cls: "az-todo" });
+      p.text(sideX - 1, b + 6, "Seitenansicht ergänzen", "az-note");
+    }
+  });
+  return B.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.buchse(spec) — Buchse/Hülse (Längsschnitt + Stirnansicht)
+   spec:{ benennung,nummer,werkstoff,toleranz, da,di,l, passung, fase }
+   ========================================================================== */
+AZ.parts.buchse = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", fase: 1 }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildBuchse(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz;
+      return [
+        { name: "Außen-⌀", soll: "⌀" + AZ.mm(spec.da), tol: "±" + AZ.mm(AZ.grenzabmass(spec.da, kl)), mittel: "Messschieber" },
+        { name: "Bohrung", soll: "⌀" + AZ.mm(spec.di) + (spec.passung ? " " + spec.passung : ""), tol: spec.passung === "H9" ? AZ.passungH9(spec.di).text : "±" + AZ.mm(AZ.grenzabmass(spec.di, kl)), mittel: spec.passung ? "Grenzlehrdorn" : "Innenmessschieber" },
+        { name: "Länge", soll: AZ.mm(spec.l) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.l, kl)), mittel: "Messschieber" },
+      ];
+    },
+  };
+};
+function azBuildBuchse(spec, modus) {
+  var voll = (modus === "fertig");
+  var da = spec.da, di = spec.di, l = spec.l, f = spec.fase || 0, ay = da / 2;
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var gap = 16, cx = l + gap + da / 2;
+  var world = { x: -18, y: -18, w: l + gap + da + 40, h: da + 40 };
+  B.zeichnung(world, function (p) {
+    if (voll) {
+      var outline = f ? [[0, f], [f, 0], [l - f, 0], [l, f], [l, da - f], [l - f, da], [f, da], [0, da - f]] : [[0, 0], [l, 0], [l, da], [0, da]];
+      var bore = [[0, ay - di / 2], [l, ay - di / 2], [l, ay + di / 2], [0, ay + di / 2]];
+      p.hatchPoly(outline, [bore], 2.4); p.poly(outline, "az-vis");
+      p.line(0, ay - di / 2, l, ay - di / 2, "az-vis"); p.line(0, ay + di / 2, l, ay + di / 2, "az-vis");
+      p.center(-4, ay, l + 4, ay);
+      p.dimH(0, l, da + 8, da);
+      if (f) p.text(l - f - 6, -2, AZ.mm(f) + "×45°", "az-dimtx");
+    } else {
+      p._p('<rect x="' + p.X(0) + '" y="' + p.Y(0) + '" width="' + (l * p.s).toFixed(2) + '" height="' + (da * p.s).toFixed(2) + '" class="az-thin" stroke-dasharray="1.5 1.5" fill="none"/>');
+      p.text(l / 2 - 14, ay, "Längsschnitt ergänzen", "az-note");
+      p.dimH(0, l, da + 8, da, { text: "?", cls: "az-todo" });
+    }
+    // Stirnansicht (Kreise) rechts
+    p.circle(cx, ay, da / 2, "az-vis"); p.circle(cx, ay, di / 2, "az-vis");
+    p.center(cx, -5, cx, da + 5); p.center(cx - da / 2 - 5, ay, cx + da / 2 + 5, ay);
+    if (voll) {
+      p.dimDia(cx, ay, da / 2, -45, null, { text: "⌀" + AZ.mm(da) });
+      p.dimDia(cx, ay, di / 2, 135, null, { text: "⌀" + AZ.mm(di) + (spec.passung ? " " + spec.passung : "") });
+    } else {
+      p.dimDia(cx, ay, da / 2, -45, null, { text: "⌀?", cls: "az-todo" });
+    }
+  });
+  return B.svg();
+}
+
 function azBuildBiege(spec, modus) {
   var voll = (modus === "fertig");
   var A = spec.a, B = spec.b, t = spec.t, r = spec.r;
