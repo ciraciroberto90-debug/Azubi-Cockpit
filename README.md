@@ -51,8 +51,10 @@ AZ.parts.platte({ benennung:"Halteplatte", nummer:"GM-101", w:90, h:50, t:15,
 // -> .svg("fertig") | .svg("ergaenzen")  +  .masse()  (Prüftabelle, auto)
 ```
 
-Unterstützt: Bohrungen (mit Passung H9 / Senkung), Gewinde (M3–M12, Kernloch DIN 13),
-Fase, Oberfläche Ra, Schnitt mit Schraffur — sowie `AZ.parts.biegeteil(...)`.
+Teile-Typen: `platte` (Bohrungen mit Passung H9/Senkung, Gewinde M3–M12,
+Fase, Ra, Schnitt A–A), `welle` (Rundteil mit Absätzen, Fase, ⌀-/Längenmaße),
+`scheibe` (Rundplatte/Flansch mit Mittelbohrung, Lochkreis, Schnitt A–A),
+`biegeteil` (Abkantung) und `bolzen` (Außengewinde).
 
 ## Aufgaben-Katalog & Lernpfad
 
@@ -64,8 +66,9 @@ und einen **filterbaren Katalog** (Thema · Schwierigkeit).
 ## Aufgabe erstellen (Werkzeug)
 
 Über den Menüpunkt **＋ Erstellen** (`#/tools/erstellen`) kannst du selbst ein Werkstück
-beschreiben (Maße + Bohrungen/Gewinde) und bekommst live eine normgerechte Zeichnung
-mit Schnitt, Bemaßung und Prüfmaßen — als Fertigzeichnung oder „zum Ergänzen“ druckbar.
+beschreiben — **Typ wählbar**: Platte · Welle · Scheibe/Flansch · Biegeteil · Bolzen —
+und bekommst live eine normgerechte Zeichnung mit Ansicht/Schnitt, Bemaßung und
+Prüfmaßen, als Fertigzeichnung oder „zum Ergänzen“ druckbar.
 
 ## Status
 

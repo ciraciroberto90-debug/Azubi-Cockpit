@@ -235,36 +235,37 @@
     });
   }
 
-  /* ---------- View: Aufgabe erstellen (Creator) ---------- */
+  /* ---------- View: Aufgabe erstellen (Creator, mehrere Teile-Typen) ---------- */
+  var C_TYPES = [
+    { key: "platte", label: "Platte" }, { key: "welle", label: "Welle (Rundteil)" },
+    { key: "scheibe", label: "Scheibe / Flansch" }, { key: "biegeteil", label: "Biegeteil" },
+    { key: "bolzen", label: "Bolzen (Außengewinde)" },
+  ];
   function viewCreator() {
     setNav("tools");
+    var typOpts = C_TYPES.map(function (t) { return '<option value="' + t.key + '">' + t.label + '</option>'; }).join("");
     app.innerHTML = h(
       '<div class="wrap">' +
       '<div class="crumb"><a href="#/">Cockpit</a> / Aufgabe erstellen</div>' +
       '<p class="eyebrow">Werkzeug</p><h1>Aufgabe erstellen</h1>' +
-      '<p class="lead">Beschreibe ein Werkstück (Platte mit Bohrungen/Gewinden) — die App erzeugt daraus eine normgerechte Zeichnung mit Schnitt, Bemaßung und Prüfmaßen. Als Fertigzeichnung oder „zum Ergänzen“ druckbar.</p>' +
+      '<p class="lead">Wähle einen Werkstück-Typ und beschreibe ihn — die App erzeugt daraus eine normgerechte Zeichnung (Ansicht/Schnitt, Bemaßung, Schriftfeld) mit Prüfmaßen. Als Fertigzeichnung oder „zum Ergänzen“ druckbar.</p>' +
       '<div class="creator">' +
       '<div class="creator-form">' +
-      '<h3>Werkstück</h3>' +
-      '<div class="frow">Benennung <input type="text" id="c_ben" value="Übungsplatte"></div>' +
-      '<div class="frow">Nummer <input type="text" id="c_nr" value="AC-001" style="width:90px"></div>' +
-      '<div class="frow">Breite <input type="number" id="c_w" value="90"> Höhe <input type="number" id="c_h" value="50"> Dicke <input type="number" id="c_t" value="12"></div>' +
-      '<div class="frow">Toleranz <select id="c_tol"><option value="f">fein</option><option value="m" selected>mittel</option><option value="c">grob</option></select></div>' +
-      '<div class="frow">Fase <input type="number" id="c_fase" value="0" step="0.5"> ×45° &nbsp; Ra <input type="text" id="c_ra" value="" style="width:60px" placeholder="z.B. 3,2"></div>' +
-      '<h3>Bohrungen &amp; Gewinde</h3>' +
-      '<div id="c_feats"></div>' +
-      '<div class="addbtns"><button class="btn small" id="c_addb">+ Bohrung</button><button class="btn small" id="c_addg">+ Gewinde</button></div>' +
-      '<div class="btnrow"><button class="btn primary" id="c_print">🖨 Zeichnung drucken (PDF)</button></div>' +
-      '<p class="chk-hint">Tipp: x/y sind die Positionen der Bohrmitte in mm (von links/unten der Platte).</p>' +
+      '<h3>Typ &amp; Kopf</h3>' +
+      '<div class="frow">Typ <select id="c_typ" style="width:auto;min-width:170px">' + typOpts + '</select></div>' +
+      '<div class="frow">Benennung <input type="text" id="c_ben" value="Werkstück"></div>' +
+      '<div class="frow">Nummer <input type="text" id="c_nr" value="AC-001" style="width:90px"> &nbsp; Toleranz <select id="c_tol"><option value="f">fein</option><option value="m" selected>mittel</option><option value="c">grob</option></select></div>' +
+      '<h3>Maße</h3><div id="c_fields"></div>' +
+      '<div class="btnrow"><button type="button" class="btn primary" id="c_print">🖨 Zeichnung drucken (PDF)</button></div>' +
       '</div>' +
       '<div>' +
-      '<div class="blatt-print"><div class="blatt-head"><span class="no">NEU</span><h2 id="c_title">Übungsplatte</h2><span class="app-tag">Azubi Cockpit</span></div>' +
-      '<div class="z-toggle" style="margin:4px 0 10px"><button class="btn small" id="c_toggle">Fertigzeichnung ⇄ Zum Ergänzen</button></div>' +
+      '<div class="blatt-print"><div class="blatt-head"><span class="no">NEU</span><h2 id="c_title">Werkstück</h2><span class="app-tag">Azubi Cockpit</span></div>' +
+      '<div class="z-toggle" style="margin:4px 0 10px"><button type="button" class="btn small" id="c_toggle">Fertigzeichnung ⇄ Zum Ergänzen</button></div>' +
       '<div id="c_preview"></div>' +
       '<h3>Prüfmaße</h3><div id="c_masse"></div></div>' +
       '</div>' +
       '</div>' +
-      '<div class="footer">Erzeugt mit dem Teile-Generator (AZ.parts.platte) · normgerecht nach DIN ISO</div>' +
+      '<div class="footer">Teile-Generator · normgerecht nach DIN ISO 128/129/5455/286/6410</div>' +
       '</div>'
     );
     wireCreator();
@@ -273,54 +274,116 @@
   function wireCreator() {
     function gv(id) { var e = document.getElementById(id); return e ? e.value : ""; }
     function num(id, d) { var v = parseFloat(gv(id)); return isNaN(v) ? d : v; }
-    function buildSpec() {
-      var spec = { benennung: gv("c_ben") || "Werkstück", nummer: gv("c_nr") || "AC-001", w: num("c_w", 80), h: num("c_h", 50), t: num("c_t", 10), toleranz: gv("c_tol"), features: [] };
-      var fase = num("c_fase", 0); if (fase > 0) spec.fase = fase;
-      var ra = (gv("c_ra") || "").trim(); if (ra) spec.ra = ra;
-      Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
-        var typ = row.getAttribute("data-typ");
-        var x = parseFloat(row.querySelector(".f_x").value) || 0, y = parseFloat(row.querySelector(".f_y").value) || 0;
-        if (typ === "gewinde") spec.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
-        else { var f = { typ: "bohrung", x: x, y: y, d: parseFloat(row.querySelector(".f_d").value) || 6 }; if (row.querySelector(".f_pass").value === "H9") f.passung = "H9"; spec.features.push(f); }
-      });
-      return spec;
+    function kopf() { return { benennung: gv("c_ben") || "Werkstück", nummer: gv("c_nr") || "AC-001", toleranz: gv("c_tol") }; }
+    var gewOpts = '<option>M4</option><option>M5</option><option selected>M6</option><option>M8</option><option>M10</option><option>M12</option>';
+    var gewOpts10 = '<option>M4</option><option>M5</option><option>M6</option><option>M8</option><option selected>M10</option><option>M12</option>';
+
+    // Feld-Vorlagen je Typ
+    var fields = {
+      platte: '<div class="frow">Breite <input type="number" id="p_w" value="90"> Höhe <input type="number" id="p_h" value="50"> Dicke <input type="number" id="p_t" value="12"></div>' +
+        '<div class="frow">Fase <input type="number" id="p_fase" value="0" step="0.5"> ×45° &nbsp; Ra <input type="text" id="p_ra" placeholder="z.B. 3,2" style="width:56px"></div>' +
+        '<h3>Bohrungen &amp; Gewinde</h3><div id="c_feats"></div>' +
+        '<div class="addbtns"><button type="button" class="btn small" id="c_addb">+ Bohrung</button><button type="button" class="btn small" id="c_addg">+ Gewinde</button></div>',
+      welle: '<div class="frow">Fase (Ende) <input type="number" id="w_fase" value="1" step="0.5"> ×45°</div>' +
+        '<h3>Abschnitte (⌀ × Länge)</h3><div id="c_segs"></div>' +
+        '<div class="addbtns"><button type="button" class="btn small" id="c_addseg">+ Abschnitt</button></div>',
+      scheibe: '<div class="frow">Außen-⌀ <input type="number" id="s_da" value="80"> Dicke <input type="number" id="s_t" value="12"></div>' +
+        '<div class="frow">Bohrung ⌀ <input type="number" id="s_b" value="20"> Passung <select id="s_pass"><option value="">ohne</option><option value="H9">H9</option></select></div>' +
+        '<div class="frow">Fase <input type="number" id="s_fase" value="0" step="0.5"> ×45°</div>' +
+        '<h3>Lochkreis (Anzahl 0 = keiner)</h3><div class="frow">Anzahl <input type="number" id="s_n" value="4"> TK-⌀ <input type="number" id="s_tk" value="60"> Loch-⌀ <input type="number" id="s_d" value="9"></div>',
+      biegeteil: '<div class="frow">Schenkel a <input type="number" id="b_a" value="60"> Schenkel b <input type="number" id="b_b" value="40"></div>' +
+        '<div class="frow">Dicke <input type="number" id="b_t" value="3"> Radius <input type="number" id="b_r" value="3"> Winkel <input type="number" id="b_w" value="90">°</div>',
+      bolzen: '<div class="frow">Gewinde <select id="z_gew">' + gewOpts10 + '</select> Länge <input type="number" id="z_l" value="60"> Fase <input type="number" id="z_fase" value="1.5" step="0.5"></div>',
+    };
+
+    // Spec-Builder je Typ -> liefert AZ.parts-Objekt
+    function buildApi(type) {
+      var k = kopf();
+      if (type === "platte") {
+        var sp = { benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, w: num("p_w", 80), h: num("p_h", 50), t: num("p_t", 10), features: [] };
+        if (num("p_fase", 0) > 0) sp.fase = num("p_fase", 0);
+        var ra = (gv("p_ra") || "").trim(); if (ra) sp.ra = ra;
+        Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+          var x = parseFloat(row.querySelector(".f_x").value) || 0, y = parseFloat(row.querySelector(".f_y").value) || 0;
+          if (row.getAttribute("data-typ") === "gewinde") sp.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
+          else { var f = { typ: "bohrung", x: x, y: y, d: parseFloat(row.querySelector(".f_d").value) || 6 }; if (row.querySelector(".f_pass").value === "H9") f.passung = "H9"; sp.features.push(f); }
+        });
+        return AZ.parts.platte(sp);
+      }
+      if (type === "welle") {
+        var segs = [];
+        Array.prototype.forEach.call(document.querySelectorAll("#c_segs .featrow"), function (row) {
+          segs.push({ d: parseFloat(row.querySelector(".s_d").value) || 20, l: parseFloat(row.querySelector(".s_l").value) || 20 });
+        });
+        if (!segs.length) segs = [{ d: 20, l: 60 }];
+        return AZ.parts.welle({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, fase: num("w_fase", 1), abschnitte: segs });
+      }
+      if (type === "scheibe") {
+        var sp2 = { benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, da: num("s_da", 80), t: num("s_t", 12) };
+        if (num("s_b", 0) > 0) { sp2.bohrung = num("s_b", 0); if (gv("s_pass") === "H9") sp2.passung = "H9"; }
+        if (num("s_fase", 0) > 0) sp2.fase = num("s_fase", 0);
+        if (num("s_n", 0) > 0) sp2.lochkreis = { n: num("s_n", 4), tk: num("s_tk", 60), d: num("s_d", 9) };
+        return AZ.parts.scheibe(sp2);
+      }
+      if (type === "biegeteil")
+        return AZ.parts.biegeteil({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, a: num("b_a", 60), b: num("b_b", 40), t: num("b_t", 3), r: num("b_r", 3), winkel: num("b_w", 90) });
+      if (type === "bolzen")
+        return AZ.parts.bolzen({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, gew: gv("z_gew") || "M10", l: num("z_l", 60), fase: num("z_fase", 1.5) });
     }
+
     function refresh() {
-      var spec = buildSpec();
-      var t = document.getElementById("c_title"); if (t) t.textContent = spec.benennung;
+      var type = gv("c_typ") || "platte";
+      var t = document.getElementById("c_title"); if (t) t.textContent = gv("c_ben") || "Werkstück";
       try {
-        var api = AZ.parts.platte(spec);
+        var api = buildApi(type);
         document.getElementById("c_preview").innerHTML =
           '<div class="aufgabe"><div class="zeichnung-halter z-fertig">' + api.svg("fertig") + '</div>' +
           '<div class="zeichnung-halter z-erg">' + api.svg("ergaenzen") + '</div></div>';
         document.getElementById("c_masse").innerHTML = azMasseTable(api);
       } catch (e) { document.getElementById("c_preview").innerHTML = '<p class="chk-hint">Eingabe prüfen: ' + e.message + '</p>'; }
     }
+
     function bindRow(div) {
       div.querySelector(".rmfeat").addEventListener("click", function () { div.remove(); refresh(); });
       Array.prototype.forEach.call(div.querySelectorAll("input,select"), function (el) { el.addEventListener("input", refresh); });
     }
-    function addFeat(typ, x, y) {
-      var wrap = document.getElementById("c_feats"), div = document.createElement("div");
-      div.className = "featrow"; div.setAttribute("data-typ", typ);
+    function addFeat(typ, x, y, d) {
+      var wrap = document.getElementById("c_feats"); if (!wrap) return;
+      var div = document.createElement("div"); div.className = "featrow"; div.setAttribute("data-typ", typ);
       if (typ === "gewinde")
-        div.innerHTML = '<span class="ftag">Gewinde</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ' +
-          '<select class="f_gew"><option>M4</option><option>M5</option><option selected>M6</option><option>M8</option><option>M10</option><option>M12</option></select><button class="rmfeat" title="entfernen">✕</button>';
+        div.innerHTML = '<span class="ftag">Gewinde</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> <select class="f_gew">' + gewOpts + '</select><button type="button" class="rmfeat">✕</button>';
       else
-        div.innerHTML = '<span class="ftag">Bohrung</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ⌀<input class="f_d" type="number" step="0.1" value="8"> ' +
-          '<select class="f_pass"><option value="">ohne</option><option value="H9">H9</option></select><button class="rmfeat" title="entfernen">✕</button>';
+        div.innerHTML = '<span class="ftag">Bohrung</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ⌀<input class="f_d" type="number" step="0.1" value="' + (d || 8) + '"> <select class="f_pass"><option value="">ohne</option><option value="H9">H9</option></select><button type="button" class="rmfeat">✕</button>';
       wrap.appendChild(div); bindRow(div); refresh();
     }
-    ["c_ben", "c_nr", "c_w", "c_h", "c_t", "c_tol", "c_fase", "c_ra"].forEach(function (id) { var e = document.getElementById(id); if (e) e.addEventListener("input", refresh); });
-    document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
-    document.getElementById("c_addg").addEventListener("click", function () { addFeat("gewinde"); });
+    function addSeg(d, l) {
+      var wrap = document.getElementById("c_segs"); if (!wrap) return;
+      var div = document.createElement("div"); div.className = "featrow";
+      div.innerHTML = '<span class="ftag">Abschnitt</span> ⌀<input class="s_d" type="number" value="' + (d || 20) + '"> Länge <input class="s_l" type="number" value="' + (l || 30) + '"><button type="button" class="rmfeat">✕</button>';
+      wrap.appendChild(div); bindRow(div); refresh();
+    }
+
+    function renderFields(type) {
+      document.getElementById("c_fields").innerHTML = fields[type] || "";
+      Array.prototype.forEach.call(document.querySelectorAll("#c_fields input, #c_fields select"), function (el) { el.addEventListener("input", refresh); });
+      if (type === "platte") {
+        document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
+        document.getElementById("c_addg").addEventListener("click", function () { addFeat("gewinde"); });
+        addFeat("bohrung", 25, 25, 12); addFeat("gewinde", 65, 25);
+      } else if (type === "welle") {
+        document.getElementById("c_addseg").addEventListener("click", function () { addSeg(); });
+        addSeg(20, 30); addSeg(30, 40); addSeg(16, 25);
+      } else { refresh(); }
+    }
+
+    document.getElementById("c_typ").addEventListener("change", function () { renderFields(this.value); });
+    ["c_ben", "c_nr", "c_tol"].forEach(function (id) { document.getElementById(id).addEventListener("input", refresh); });
     document.getElementById("c_toggle").addEventListener("click", function () { var a = document.querySelector("#c_preview .aufgabe"); if (a) a.classList.toggle("erg"); });
     document.getElementById("c_print").addEventListener("click", function () {
       document.body.classList.add("print-blatt"); window.print();
       setTimeout(function () { document.body.classList.remove("print-blatt"); }, 300);
     });
-    // Startbeispiel
-    addFeat("bohrung", 25, 25); addFeat("gewinde", 65, 25);
+    renderFields("platte");
   }
 
   /* ---------- Router ---------- */

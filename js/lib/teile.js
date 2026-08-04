@@ -7,6 +7,16 @@
 window.AZ = window.AZ || {};
 AZ.parts = AZ.parts || {};
 
+/* Lochkreis-Positionen (Teilkreis) — hier definiert, damit teile.js
+   unabhängig von der Ladereihenfolge funktioniert. */
+if (typeof azTeilkreis === "undefined") {
+  window.azTeilkreis = function (cx, cy, r, n, start, d) {
+    var arr = [], a0 = (start == null ? 45 : start) * Math.PI / 180;
+    for (var i = 0; i < n; i++) { var a = a0 + i * 2 * Math.PI / n; arr.push({ typ: "bohrung", x: +(cx + r * Math.cos(a)).toFixed(1), y: +(cy + r * Math.sin(a)).toFixed(1), d: d }); }
+    return arr;
+  };
+}
+
 /* Kernlochdurchmesser metr. ISO-Regelgewinde (DIN 13, mm) */
 AZ.KERNLOCH = { M3: 2.5, M4: 3.3, M5: 4.2, M6: 5.0, M8: 6.8, M10: 8.5, M12: 10.2 };
 /* Steigung P (mm) */
@@ -227,6 +237,123 @@ function azBuildBolzen(spec, modus) {
     } else {
       p.dimH(0, l, d + 9, d, { text: "?", cls: "az-todo" });
       p.text(l * 0.45 - 8, -7, "?", "az-todo");
+    }
+  });
+  return b.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.welle(spec) — Rundteil/Welle mit Absätzen (Seitenansicht)
+   spec:{ benennung,nummer,werkstoff,toleranz, abschnitte:[{d,l}], fase }
+   ========================================================================== */
+AZ.parts.welle = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", fase: 1, abschnitte: [] }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildWelle(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz, rows = [], L = 0;
+      spec.abschnitte.forEach(function (s, i) {
+        rows.push({ name: "Abschnitt " + (i + 1), soll: "⌀" + AZ.mm(s.d) + " × " + AZ.mm(s.l), tol: "±" + AZ.mm(AZ.grenzabmass(s.d, kl)), mittel: "Messschieber" });
+        L += s.l;
+      });
+      rows.push({ name: "Gesamtlänge", soll: AZ.mm(L) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(L, kl)), mittel: "Messschieber" });
+      return rows;
+    },
+  };
+};
+function azBuildWelle(spec, modus) {
+  var voll = (modus === "fertig");
+  var segs = spec.abschnitte.length ? spec.abschnitte : [{ d: 20, l: 60 }];
+  var L = 0, Dmax = 0;
+  segs.forEach(function (s) { L += s.l; if (s.d > Dmax) Dmax = s.d; });
+  var f = spec.fase || 0, ay = Dmax / 2;
+  var b = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var world = { x: -18, y: -22, w: L + 40, h: Dmax + 50 };
+  b.zeichnung(world, function (p) {
+    var x = 0;
+    segs.forEach(function (s, i) {
+      var y0 = ay - s.d / 2, y1 = ay + s.d / 2, last = (i === segs.length - 1), ff = (last && f) ? f : 0;
+      p.fill(x, y0, s.l, s.d);
+      p.line(x, y0, x + s.l - ff, y0, "az-vis");
+      p.line(x, y1, x + s.l - ff, y1, "az-vis");
+      if (ff) { p.line(x + s.l - ff, y0, x + s.l, y0 + ff, "az-vis"); p.line(x + s.l - ff, y1, x + s.l, y1 - ff, "az-vis"); p.line(x + s.l, y0 + ff, x + s.l, y1 - ff, "az-vis"); }
+      else if (last) p.line(x + s.l, y0, x + s.l, y1, "az-vis");
+      if (i === 0) p.line(x, y0, x, y1, "az-vis");
+      else { var pv = segs[i - 1]; p.line(x, ay - pv.d / 2, x, y0, "az-vis"); p.line(x, ay + pv.d / 2, x, y1, "az-vis"); }
+      x += s.l;
+    });
+    p.center(-6, ay, L + 6, ay);
+    if (voll) {
+      var xc = 0;
+      segs.forEach(function (s) { p.dimH(xc, xc + s.l, Dmax + 8, Dmax); xc += s.l; });
+      if (segs.length > 1) p.dimH(0, L, Dmax + 16, Dmax);
+      xc = 0;
+      segs.forEach(function (s) { var mx = xc + s.l / 2; p.line(mx, ay - s.d / 2, mx, -9, "az-thin"); p.text(mx - 6.5, -10, "⌀" + AZ.mm(s.d), "az-dimtx"); xc += s.l; });
+      if (f) p.text(L - f - 8, ay - Dmax / 2 - 2.5, AZ.mm(f) + "×45°", "az-dimtx");
+    } else {
+      p.dimH(0, L, Dmax + 8, Dmax, { text: "?", cls: "az-todo" });
+      var xd = 0; segs.forEach(function (s) { p.text(xd + s.l / 2 - 2, -10, "?", "az-todo"); xd += s.l; });
+    }
+  });
+  return b.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.scheibe(spec) — Rundplatte/Flansch mit Lochkreis (Ansicht+Schnitt)
+   spec:{ benennung,nummer,werkstoff,toleranz, da, t, bohrung, passung,
+          lochkreis:{tk,n,d}, fase }
+   ========================================================================== */
+AZ.parts.scheibe = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", fase: 0 }, spec);
+  return {
+    spec: spec,
+    svg: function (m) { return azBuildScheibe(spec, m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz, rows = [
+        { name: "Außen-⌀", soll: "⌀" + AZ.mm(spec.da), tol: "±" + AZ.mm(AZ.grenzabmass(spec.da, kl)), mittel: "Messschieber" },
+        { name: "Dicke", soll: AZ.mm(spec.t) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.t, kl)), mittel: "Messschieber" },
+      ];
+      if (spec.bohrung) rows.push({ name: "Bohrung", soll: "⌀" + AZ.mm(spec.bohrung) + (spec.passung ? " " + spec.passung : ""), tol: spec.passung === "H9" ? AZ.passungH9(spec.bohrung).text : "±" + AZ.mm(AZ.grenzabmass(spec.bohrung, kl)), mittel: spec.passung ? "Grenzlehrdorn" : "Messschieber" });
+      if (spec.lochkreis) rows.push({ name: "Lochkreis", soll: spec.lochkreis.n + "× ⌀" + AZ.mm(spec.lochkreis.d) + " auf ⌀" + AZ.mm(spec.lochkreis.tk), tol: "±" + AZ.mm(AZ.grenzabmass(spec.lochkreis.d, kl)), mittel: "Messschieber" });
+      return rows;
+    },
+  };
+};
+function azBuildScheibe(spec, modus) {
+  var voll = (modus === "fertig");
+  var da = spec.da, t = spec.t, R = da / 2, f = spec.fase || 0, lk = spec.lochkreis, cb = spec.bohrung;
+  var b = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var gap = 16, sy0 = da + gap, sy1 = sy0 + t;
+  var world = { x: -20, y: -18, w: da + 44, h: sy1 + 32 };
+  b.zeichnung(world, function (p) {
+    var cx = R, cy = R;
+    p.circle(cx, cy, R, "az-vis");
+    if (cb) p.circle(cx, cy, cb / 2, "az-vis");
+    p.center(cx, -6, cx, da + 6); p.center(-6, cy, da + 6, cy);
+    if (lk) {
+      p._p('<circle cx="' + p.X(cx) + '" cy="' + p.Y(cy) + '" r="' + (lk.tk / 2 * p.s).toFixed(2) + '" class="az-center" fill="none"/>');
+      azTeilkreis(cx, cy, lk.tk / 2, lk.n, 45, lk.d).forEach(function (hh) { p.circle(hh.x, hh.y, lk.d / 2, "az-vis"); });
+    }
+    if (voll) {
+      p.schnittlinie(-6, da + 6, cy, "A");
+      var outline = f ? [[0, sy0 + f], [f, sy0], [da - f, sy0], [da, sy0 + f], [da, sy1], [0, sy1]] : [[0, sy0], [da, sy0], [da, sy1], [0, sy1]];
+      function slot(x0, x1) { return [[x0, sy0], [x1, sy0], [x1, sy1], [x0, sy1]]; }
+      var holes = [];
+      if (cb) holes.push(slot(cx - cb / 2, cx + cb / 2));
+      if (lk) { holes.push(slot(cx - lk.tk / 2 - lk.d / 2, cx - lk.tk / 2 + lk.d / 2)); holes.push(slot(cx + lk.tk / 2 - lk.d / 2, cx + lk.tk / 2 + lk.d / 2)); }
+      p.hatchPoly(outline, holes, 2.4); p.poly(outline, "az-vis");
+      holes.forEach(function (hh) { p.line(hh[0][0], sy0, hh[0][0], sy1, "az-vis"); p.line(hh[1][0], sy0, hh[1][0], sy1, "az-vis"); });
+      p.center(cx, sy0 - 3, cx, sy1 + 3);
+      if (lk) { p.center(cx - lk.tk / 2, sy0 - 2, cx - lk.tk / 2, sy1 + 2); p.center(cx + lk.tk / 2, sy0 - 2, cx + lk.tk / 2, sy1 + 2); }
+      p.text(da / 2 - 12, sy1 + 10, "SCHNITT A–A", "az-lblb");
+      p.dimV(sy0, sy1, da + 6, da);
+      p.dimDia(cx, cy, R, -45, null, { text: "⌀" + AZ.mm(da) });
+      if (cb) p.dimDia(cx, cy, cb / 2, 135, null, { text: "⌀" + AZ.mm(cb) + (spec.passung ? " " + spec.passung : "") });
+      if (lk) { p.text(2, -8, lk.n + "×⌀" + AZ.mm(lk.d) + " · Lochkreis ⌀" + AZ.mm(lk.tk), "az-dimtx"); }
+    } else {
+      p.dimDia(cx, cy, R, -45, null, { text: "⌀?", cls: "az-todo" });
+      p.text(da / 2 - 14, sy0 + t / 2, "Schnitt A–A ergänzen", "az-note");
     }
   });
   return b.svg();
