@@ -462,6 +462,104 @@ function azBuildBuchse(spec, modus) {
   return B.svg();
 }
 
+/* ==========================================================================
+   AZ.parts.uprofil(spec) — U-Profil (Querschnitt)  spec:{ w,h,s }
+   ========================================================================== */
+AZ.parts.uprofil = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m" }, spec);
+  return {
+    spec: spec, svg: function (m) { return azBuildUT(spec, "u", m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz;
+      return [
+        { name: "Breite", soll: AZ.mm(spec.w) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.w, kl)), mittel: "Messschieber" },
+        { name: "Höhe", soll: AZ.mm(spec.h) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.h, kl)), mittel: "Messschieber" },
+        { name: "Wandstärke", soll: AZ.mm(spec.s) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.s, kl)), mittel: "Messschieber" },
+      ];
+    },
+  };
+};
+/* AZ.parts.tprofil(spec) — T-Profil (Querschnitt)  spec:{ w,h,s (Flansch), sw (Steg) } */
+AZ.parts.tprofil = function (spec) {
+  spec = Object.assign({ werkstoff: "S235JR", toleranz: "m", sw: null }, spec);
+  if (spec.sw == null) spec.sw = spec.s;
+  return {
+    spec: spec, svg: function (m) { return azBuildUT(spec, "t", m === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz;
+      return [
+        { name: "Breite (Flansch)", soll: AZ.mm(spec.w) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.w, kl)), mittel: "Messschieber" },
+        { name: "Höhe", soll: AZ.mm(spec.h) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.h, kl)), mittel: "Messschieber" },
+        { name: "Flanschdicke", soll: AZ.mm(spec.s) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.s, kl)), mittel: "Messschieber" },
+        { name: "Stegdicke", soll: AZ.mm(spec.sw) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(spec.sw, kl)), mittel: "Messschieber" },
+      ];
+    },
+  };
+};
+function azBuildUT(spec, art, modus) {
+  var voll = (modus === "fertig"), w = spec.w, h = spec.h, s = spec.s;
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
+  var world = { x: -16, y: -18, w: w + 34, h: h + 40 };
+  B.zeichnung(world, function (p) {
+    var out;
+    if (art === "u") out = [[0, 0], [s, 0], [s, h - s], [w - s, h - s], [w - s, 0], [w, 0], [w, h], [0, h]];
+    else { var sw = spec.sw, x1 = w / 2 - sw / 2, x2 = w / 2 + sw / 2; out = [[0, 0], [w, 0], [w, s], [x2, s], [x2, h], [x1, h], [x1, s], [0, s]]; }
+    p.fillPoly(out); p.poly(out, "az-vis");
+    if (voll) {
+      p.dimH(0, w, -8, 0); p.dimV(0, h, -14, 0);
+      if (art === "u") { p.dimH(0, s, h + 8, h); p.dimV(h - s, h, w + 6, w); }
+      else { p.dimV(0, s, w + 6, w); p.dimH(w / 2 - spec.sw / 2, w / 2 + spec.sw / 2, h + 8, h); }
+    } else { p.dimH(0, w, -8, 0, { text: "?", cls: "az-todo" }); p.dimV(0, h, -14, 0, { text: "?", cls: "az-todo" }); }
+  });
+  return B.svg();
+}
+
+/* ==========================================================================
+   AZ.parts.zahnrad(spec) — Stirnrad-Grundform (vereinfachte Darstellung)
+   spec:{ m (Modul), z (Zähnezahl), bohrung, passung }
+   Kopfkreis breit, Teilkreis Strichpunkt, Fußkreis schmal (DIN-vereinfacht).
+   ========================================================================== */
+AZ.parts.zahnrad = function (spec) {
+  spec = Object.assign({ werkstoff: "C45", toleranz: "m", bohrung: 20 }, spec);
+  return {
+    spec: spec, svg: function (mo) { return azBuildZahnrad(spec, mo === "ergaenzen" ? "ergaenzen" : "fertig"); },
+    masse: function () {
+      var kl = spec.toleranz, m = spec.m, z = spec.z;
+      var rows = [
+        { name: "Modul m", soll: AZ.mm(m) + " mm", tol: "—", mittel: "—" },
+        { name: "Zähnezahl z", soll: "" + z, tol: "—", mittel: "—" },
+        { name: "Kopfkreis ⌀a", soll: "⌀" + AZ.mm(m * (z + 2)), tol: "±" + AZ.mm(AZ.grenzabmass(m * (z + 2), kl)), mittel: "Messschieber" },
+        { name: "Teilkreis ⌀", soll: "⌀" + AZ.mm(m * z), tol: "—", mittel: "—" },
+      ];
+      if (spec.bohrung) rows.push({ name: "Bohrung", soll: "⌀" + AZ.mm(spec.bohrung) + (spec.passung ? " " + spec.passung : ""), tol: spec.passung === "H9" ? AZ.passungH9(spec.bohrung).text : "±" + AZ.mm(AZ.grenzabmass(spec.bohrung, kl)), mittel: spec.passung ? "Grenzlehrdorn" : "Messschieber" });
+      return rows;
+    },
+  };
+};
+function azBuildZahnrad(spec, modus) {
+  var voll = (modus === "fertig"), m = spec.m, z = spec.z;
+  var da = m * (z + 2), d = m * z, df = m * (z - 2.5), R = da / 2;
+  var B = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff || "C45", nummer: spec.nummer, toleranz: spec.toleranz });
+  var world = { x: -20, y: -18, w: da + 78, h: da + 36 };
+  B.zeichnung(world, function (p) {
+    var cx = R, cy = R;
+    p.circle(cx, cy, da / 2, "az-vis");
+    p._p('<circle cx="' + p.X(cx) + '" cy="' + p.Y(cy) + '" r="' + (d / 2 * p.s).toFixed(2) + '" class="az-center" fill="none"/>');
+    p.circle(cx, cy, df / 2, "az-thin");
+    if (spec.bohrung) p.circle(cx, cy, spec.bohrung / 2, "az-vis");
+    p.center(cx, -6, cx, da + 6); p.center(-6, cy, da + 6, cy);
+    if (voll) {
+      p.dimDia(cx, cy, da / 2, -45, null, { text: "⌀" + AZ.mm(da) });
+      if (spec.bohrung) p.dimDia(cx, cy, spec.bohrung / 2, 135, null, { text: "⌀" + AZ.mm(spec.bohrung) + (spec.passung ? " " + spec.passung : "") });
+      p.text(da + 4, 8, "Modul m = " + AZ.mm(m), "az-dimtx");
+      p.text(da + 4, 15, "Zähnezahl z = " + z, "az-dimtx");
+      p.text(da + 4, 22, "Teilkreis ⌀ = " + AZ.mm(d), "az-dimtx");
+      p.text(da + 4, 29, "Eingriffswinkel 20°", "az-dimtx");
+    } else { p.dimDia(cx, cy, da / 2, -45, null, { text: "⌀?", cls: "az-todo" }); }
+  });
+  return B.svg();
+}
+
 function azBuildBiege(spec, modus) {
   var voll = (modus === "fertig");
   var A = spec.a, B = spec.b, t = spec.t, r = spec.r;

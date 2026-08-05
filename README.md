@@ -51,10 +51,17 @@ AZ.parts.platte({ benennung:"Halteplatte", nummer:"GM-101", w:90, h:50, t:15,
 // -> .svg("fertig") | .svg("ergaenzen")  +  .masse()  (Prüftabelle, auto)
 ```
 
-Teile-Typen: `platte` (Bohrungen mit Passung H9/Senkung, Gewinde M3–M12,
-Fase, Ra, Schnitt A–A), `welle` (Rundteil mit Absätzen, Fase, ⌀-/Längenmaße),
-`scheibe` (Rundplatte/Flansch mit Mittelbohrung, Lochkreis, Schnitt A–A),
-`biegeteil` (Abkantung) und `bolzen` (Außengewinde).
+Teile-Typen (10): `platte`, `welle`, `scheibe` (Flansch mit Lochkreis),
+`winkel` (L-Profil), `buchse` (Hülse, Längsschnitt), `uprofil`, `tprofil`,
+`zahnrad` (Stirnrad-Grundform, vereinfachte Darstellung), `biegeteil`,
+`bolzen` — jeweils mit Ansicht/Schnitt, Bemaßung, Schriftfeld und Prüfmaßen.
+
+## Skizzen-Modus (Freihand, Mini-CAD)
+
+Menüpunkt **✎ Skizze** (`#/tools/skizze`): SVG-Zeichenbrett mit 5-mm-Raster
+und Fang. Werkzeuge: Linie · Mittellinie · Kreis · **Bogen** · Rechteck · Maß ·
+Text · Löschen. Dazu **Schriftfeld** ein/aus, **Speichern/Laden** (JSON, plus
+Auto-Speichern), Rückgängig, Leeren und Drucken (PDF). Maße in mm.
 
 ## Aufgaben-Katalog & Lernpfad
 
