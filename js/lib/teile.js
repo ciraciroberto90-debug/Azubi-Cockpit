@@ -39,6 +39,7 @@ AZ.mm = function (v) { return (v).toFixed(3).replace(/0+$/, "").replace(/\.$/, "
 function azNormFeature(f) {
   var g = { typ: f.typ, x: f.x, y: f.y };
   if (f.typ === "gewinde") { g.gew = f.gew; g.nom = parseFloat(f.gew.slice(1)); g.core = AZ.KERNLOCH[f.gew]; }
+  else if (f.typ === "langloch") { g.l = f.l; g.d = f.d; g.form = f.form || "rund"; }
   else { g.d = f.d; g.passung = f.passung || null; g.senkung = f.senkung || null; }
   return g;
 }
@@ -84,6 +85,17 @@ function azBuildPlatte(spec, modus) {
       p.center(f.x, -5, f.x, h + 5);
       if (!voll && i > 0) { p.text(f.x - 0.6, f.y + 1.5, "?", "az-todo"); return; }
       if (f.typ === "gewinde") p.gewindeFront(f.x, f.y, f.nom, f.core);
+      else if (f.typ === "langloch") {
+        var r = f.d / 2, dxx = Math.max(0, f.l / 2 - r), xL = f.x - dxx, xR = f.x + dxx;
+        p.center(f.x - f.l / 2 - 3, f.y, f.x + f.l / 2 + 3, f.y);
+        if (f.form === "eckig") { p.rect(f.x - f.l / 2, f.y - r, f.l, f.d, "az-vis"); }
+        else {
+          p.line(xL, f.y - r, xR, f.y - r, "az-vis"); p.line(xL, f.y + r, xR, f.y + r, "az-vis");
+          var rr = (r * p.s).toFixed(2);
+          p._p('<path d="M' + p.X(xR) + ',' + p.Y(f.y - r) + ' A' + rr + ',' + rr + ' 0 0 1 ' + p.X(xR) + ',' + p.Y(f.y + r) + '" class="az-vis" fill="none"/>');
+          p._p('<path d="M' + p.X(xL) + ',' + p.Y(f.y + r) + ' A' + rr + ',' + rr + ' 0 0 1 ' + p.X(xL) + ',' + p.Y(f.y - r) + '" class="az-vis" fill="none"/>');
+        }
+      }
       else { p.circle(f.x, f.y, f.d / 2, "az-vis"); if (f.senkung) p.circle(f.x, f.y, f.senkung.d / 2, "az-thin"); }
     });
     if (schnitt) p.schnittlinie(-6, w + 6, spec.schnittY, "A");
@@ -94,7 +106,7 @@ function azBuildPlatte(spec, modus) {
         ? [[0, sy0 + fase], [fase, sy0], [w - fase, sy0], [w, sy0 + fase], [w, sy1], [0, sy1]]
         : [[0, sy0], [w, sy0], [w, sy1], [0, sy1]];
       var holes = feats.map(function (f) {
-        var sw = (f.typ === "gewinde") ? f.core : f.d;
+        var sw = (f.typ === "gewinde") ? f.core : (f.typ === "langloch" ? f.l : f.d);
         return [[f.x - sw / 2, sy0], [f.x + sw / 2, sy0], [f.x + sw / 2, sy1], [f.x - sw / 2, sy1]];
       });
       p.hatchPoly(outline, holes, 2.4);
@@ -105,6 +117,9 @@ function azBuildPlatte(spec, modus) {
           p.line(f.x + f.core / 2, sy0, f.x + f.core / 2, sy1, "az-vis");
           p.line(f.x - f.nom / 2, sy0, f.x - f.nom / 2, sy1, "az-thin");
           p.line(f.x + f.nom / 2, sy0, f.x + f.nom / 2, sy1, "az-thin");
+        } else if (f.typ === "langloch") {
+          p.line(f.x - f.l / 2, sy0, f.x - f.l / 2, sy1, "az-vis");
+          p.line(f.x + f.l / 2, sy0, f.x + f.l / 2, sy1, "az-vis");
         } else {
           p.line(f.x - f.d / 2, sy0, f.x - f.d / 2, sy1, "az-vis");
           p.line(f.x + f.d / 2, sy0, f.x + f.d / 2, sy1, "az-vis");
@@ -134,6 +149,10 @@ function azBuildPlatte(spec, modus) {
       feats.forEach(function (f, i) {
         var ang = (i % 2 === 0) ? -132 : -48;
         if (f.typ === "gewinde") p.dimDia(f.x, f.y, f.nom / 2, ang, null, { text: f.gew });
+        else if (f.typ === "langloch") {
+          p.line(f.x, f.y - f.d / 2, f.x + 6, f.y - f.d / 2 - 7, "az-thin");
+          p.text(f.x + 6.5, f.y - f.d / 2 - 7.5, (f.form === "eckig" ? "Nut " : "Langloch ") + AZ.mm(f.l) + "×" + AZ.mm(f.d), "az-dimtx");
+        }
         else p.dimDia(f.x, f.y, f.d / 2, ang, null, { text: "⌀" + AZ.mm(f.d) + (f.passung ? " " + f.passung : "") });
       });
       if (fase && schnitt) { p.line(fase, sy0, -6, sy0 - 3, "az-thin"); p.text(-15, sy0 - 3.5, AZ.mm(fase) + "×45°", "az-dimtx"); }
@@ -159,6 +178,7 @@ function azPlatteMasse(spec) {
   ];
   spec._features.forEach(function (f) {
     if (f.typ === "gewinde") rows.push({ name: "Gewinde", soll: f.gew, tol: "—", mittel: "Gewindelehrdorn" });
+    else if (f.typ === "langloch") rows.push({ name: f.form === "eckig" ? "Nut" : "Langloch", soll: AZ.mm(f.l) + " × ⌀" + AZ.mm(f.d), tol: "±" + AZ.mm(AZ.grenzabmass(f.d, kl)), mittel: "Messschieber" });
     else if (f.passung === "H9") { var pz = AZ.passungH9(f.d); rows.push({ name: "Passbohrung", soll: "⌀" + AZ.mm(f.d) + " H9", tol: pz.text, mittel: "Grenzlehrdorn" }); }
     else rows.push({ name: "Bohrung", soll: "⌀" + AZ.mm(f.d), tol: "±" + AZ.mm(AZ.grenzabmass(f.d, kl)), mittel: "Messschieber" });
   });
@@ -254,7 +274,8 @@ AZ.parts.welle = function (spec) {
     masse: function () {
       var kl = spec.toleranz, rows = [], L = 0;
       spec.abschnitte.forEach(function (s, i) {
-        rows.push({ name: "Abschnitt " + (i + 1), soll: "⌀" + AZ.mm(s.d) + " × " + AZ.mm(s.l), tol: "±" + AZ.mm(AZ.grenzabmass(s.d, kl)), mittel: "Messschieber" });
+        var dtxt = (s.d2 && s.d2 !== s.d) ? ("⌀" + AZ.mm(s.d) + "→⌀" + AZ.mm(s.d2) + " (Kegel)") : ("⌀" + AZ.mm(s.d));
+        rows.push({ name: "Abschnitt " + (i + 1), soll: dtxt + " × " + AZ.mm(s.l), tol: "±" + AZ.mm(AZ.grenzabmass(s.d, kl)), mittel: "Messschieber" });
         L += s.l;
       });
       rows.push({ name: "Gesamtlänge", soll: AZ.mm(L) + " mm", tol: "±" + AZ.mm(AZ.grenzabmass(L, kl)), mittel: "Messschieber" });
@@ -266,21 +287,23 @@ function azBuildWelle(spec, modus) {
   var voll = (modus === "fertig");
   var segs = spec.abschnitte.length ? spec.abschnitte : [{ d: 20, l: 60 }];
   var L = 0, Dmax = 0;
-  segs.forEach(function (s) { L += s.l; if (s.d > Dmax) Dmax = s.d; });
+  segs.forEach(function (s) { L += s.l; Dmax = Math.max(Dmax, s.d, s.d2 || 0); });
   var f = spec.fase || 0, ay = Dmax / 2;
   var b = new AZ.Blatt({ format: "A4quer", titel: spec.benennung, werkstoff: spec.werkstoff, nummer: spec.nummer, toleranz: spec.toleranz });
   var world = { x: -18, y: -22, w: L + 40, h: Dmax + 50 };
   b.zeichnung(world, function (p) {
     var x = 0;
     segs.forEach(function (s, i) {
-      var y0 = ay - s.d / 2, y1 = ay + s.d / 2, last = (i === segs.length - 1), ff = (last && f) ? f : 0;
-      p.fill(x, y0, s.l, s.d);
-      p.line(x, y0, x + s.l - ff, y0, "az-vis");
-      p.line(x, y1, x + s.l - ff, y1, "az-vis");
-      if (ff) { p.line(x + s.l - ff, y0, x + s.l, y0 + ff, "az-vis"); p.line(x + s.l - ff, y1, x + s.l, y1 - ff, "az-vis"); p.line(x + s.l, y0 + ff, x + s.l, y1 - ff, "az-vis"); }
-      else if (last) p.line(x + s.l, y0, x + s.l, y1, "az-vis");
-      if (i === 0) p.line(x, y0, x, y1, "az-vis");
-      else { var pv = segs[i - 1]; p.line(x, ay - pv.d / 2, x, y0, "az-vis"); p.line(x, ay + pv.d / 2, x, y1, "az-vis"); }
+      var dL = s.d, dR = s.d2 || s.d, taper = (dR !== dL);
+      var y0L = ay - dL / 2, y1L = ay + dL / 2, y0R = ay - dR / 2, y1R = ay + dR / 2;
+      var last = (i === segs.length - 1), ff = (last && f && !taper) ? f : 0;
+      p.fillPoly([[x, y0L], [x + s.l, y0R], [x + s.l, y1R], [x, y1L]]);
+      p.line(x, y0L, x + s.l - ff, y0R, "az-vis");
+      p.line(x, y1L, x + s.l - ff, y1R, "az-vis");
+      if (ff) { p.line(x + s.l - ff, y0R, x + s.l, y0R + ff, "az-vis"); p.line(x + s.l - ff, y1R, x + s.l, y1R - ff, "az-vis"); p.line(x + s.l, y0R + ff, x + s.l, y1R - ff, "az-vis"); }
+      else if (last) p.line(x + s.l, y0R, x + s.l, y1R, "az-vis");
+      if (i === 0) p.line(x, y0L, x, y1L, "az-vis");
+      else { var pr = segs[i - 1].d2 || segs[i - 1].d; p.line(x, ay - pr / 2, x, y0L, "az-vis"); p.line(x, ay + pr / 2, x, y1L, "az-vis"); }
       x += s.l;
     });
     p.center(-6, ay, L + 6, ay);
@@ -289,7 +312,13 @@ function azBuildWelle(spec, modus) {
       segs.forEach(function (s) { p.dimH(xc, xc + s.l, Dmax + 8, Dmax); xc += s.l; });
       if (segs.length > 1) p.dimH(0, L, Dmax + 16, Dmax);
       xc = 0;
-      segs.forEach(function (s) { var mx = xc + s.l / 2; p.line(mx, ay - s.d / 2, mx, -9, "az-thin"); p.text(mx - 6.5, -10, "⌀" + AZ.mm(s.d), "az-dimtx"); xc += s.l; });
+      segs.forEach(function (s) {
+        if (s.d2 && s.d2 !== s.d) {
+          p.line(xc + s.l * 0.25, ay - s.d / 2, xc + s.l * 0.25, -9, "az-thin"); p.text(xc + s.l * 0.25 - 6.5, -10, "⌀" + AZ.mm(s.d), "az-dimtx");
+          p.line(xc + s.l * 0.75, ay - s.d2 / 2, xc + s.l * 0.75, -9, "az-thin"); p.text(xc + s.l * 0.75 - 6.5, -10, "⌀" + AZ.mm(s.d2), "az-dimtx");
+        } else { var mx = xc + s.l / 2; p.line(mx, ay - s.d / 2, mx, -9, "az-thin"); p.text(mx - 6.5, -10, "⌀" + AZ.mm(s.d), "az-dimtx"); }
+        xc += s.l;
+      });
       if (f) p.text(L - f - 8, ay - Dmax / 2 - 2.5, AZ.mm(f) + "×45°", "az-dimtx");
     } else {
       p.dimH(0, L, Dmax + 8, Dmax, { text: "?", cls: "az-todo" });

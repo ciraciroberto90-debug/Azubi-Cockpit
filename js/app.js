@@ -284,8 +284,8 @@
     var fields = {
       platte: '<div class="frow">Breite <input type="number" id="p_w" value="90"> Höhe <input type="number" id="p_h" value="50"> Dicke <input type="number" id="p_t" value="12"></div>' +
         '<div class="frow">Fase <input type="number" id="p_fase" value="0" step="0.5"> ×45° &nbsp; Ra <input type="text" id="p_ra" placeholder="z.B. 3,2" style="width:56px"></div>' +
-        '<h3>Bohrungen &amp; Gewinde</h3><div id="c_feats"></div>' +
-        '<div class="addbtns"><button type="button" class="btn small" id="c_addb">+ Bohrung</button><button type="button" class="btn small" id="c_addg">+ Gewinde</button></div>',
+        '<h3>Bohrungen · Gewinde · Langloch</h3><div id="c_feats"></div>' +
+        '<div class="addbtns"><button type="button" class="btn small" id="c_addb">+ Bohrung</button><button type="button" class="btn small" id="c_addg">+ Gewinde</button><button type="button" class="btn small" id="c_addl">+ Langloch</button></div>',
       welle: '<div class="frow">Fase (Ende) <input type="number" id="w_fase" value="1" step="0.5"> ×45°</div>' +
         '<h3>Abschnitte (⌀ × Länge)</h3><div id="c_segs"></div>' +
         '<div class="addbtns"><button type="button" class="btn small" id="c_addseg">+ Abschnitt</button></div>',
@@ -316,8 +316,10 @@
         if (num("p_fase", 0) > 0) sp.fase = num("p_fase", 0);
         var ra = (gv("p_ra") || "").trim(); if (ra) sp.ra = ra;
         Array.prototype.forEach.call(document.querySelectorAll("#c_feats .featrow"), function (row) {
+          var typ = row.getAttribute("data-typ");
           var x = parseFloat(row.querySelector(".f_x").value) || 0, y = parseFloat(row.querySelector(".f_y").value) || 0;
-          if (row.getAttribute("data-typ") === "gewinde") sp.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
+          if (typ === "gewinde") sp.features.push({ typ: "gewinde", x: x, y: y, gew: row.querySelector(".f_gew").value });
+          else if (typ === "langloch") sp.features.push({ typ: "langloch", x: x, y: y, l: parseFloat(row.querySelector(".f_l").value) || 30, d: parseFloat(row.querySelector(".f_d").value) || 8, form: row.querySelector(".f_form").value });
           else { var f = { typ: "bohrung", x: x, y: y, d: parseFloat(row.querySelector(".f_d").value) || 6 }; if (row.querySelector(".f_pass").value === "H9") f.passung = "H9"; sp.features.push(f); }
         });
         return AZ.parts.platte(sp);
@@ -325,7 +327,9 @@
       if (type === "welle") {
         var segs = [];
         Array.prototype.forEach.call(document.querySelectorAll("#c_segs .featrow"), function (row) {
-          segs.push({ d: parseFloat(row.querySelector(".s_d").value) || 20, l: parseFloat(row.querySelector(".s_l").value) || 20 });
+          var sd = parseFloat(row.querySelector(".s_d").value) || 20, seg = { d: sd, l: parseFloat(row.querySelector(".s_l").value) || 20 };
+          var d2 = parseFloat(row.querySelector(".s_d2").value) || 0; if (d2 > 0 && d2 !== sd) seg.d2 = d2;
+          segs.push(seg);
         });
         if (!segs.length) segs = [{ d: 20, l: 60 }];
         return AZ.parts.welle({ benennung: k.benennung, nummer: k.nummer, toleranz: k.toleranz, fase: num("w_fase", 1), abschnitte: segs });
@@ -385,6 +389,8 @@
       var div = document.createElement("div"); div.className = "featrow"; div.setAttribute("data-typ", typ);
       if (typ === "gewinde")
         div.innerHTML = '<span class="ftag">Gewinde</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> <select class="f_gew">' + gewOpts + '</select><button type="button" class="rmfeat">✕</button>';
+      else if (typ === "langloch")
+        div.innerHTML = '<span class="ftag">Langloch</span> x<input class="f_x" type="number" value="' + (x || 45) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> L<input class="f_l" type="number" value="40"> ⌀<input class="f_d" type="number" step="0.1" value="10"> <select class="f_form"><option value="rund">rund</option><option value="eckig">Nut</option></select><button type="button" class="rmfeat">✕</button>';
       else
         div.innerHTML = '<span class="ftag">Bohrung</span> x<input class="f_x" type="number" value="' + (x || 20) + '"> y<input class="f_y" type="number" value="' + (y || 25) + '"> ⌀<input class="f_d" type="number" step="0.1" value="' + (d || 8) + '"> <select class="f_pass"><option value="">ohne</option><option value="H9">H9</option></select><button type="button" class="rmfeat">✕</button>';
       wrap.appendChild(div); bindRow(div); refresh();
@@ -392,7 +398,7 @@
     function addSeg(d, l) {
       var wrap = document.getElementById("c_segs"); if (!wrap) return;
       var div = document.createElement("div"); div.className = "featrow";
-      div.innerHTML = '<span class="ftag">Abschnitt</span> ⌀<input class="s_d" type="number" value="' + (d || 20) + '"> Länge <input class="s_l" type="number" value="' + (l || 30) + '"><button type="button" class="rmfeat">✕</button>';
+      div.innerHTML = '<span class="ftag">Abschnitt</span> ⌀<input class="s_d" type="number" value="' + (d || 20) + '"> Länge <input class="s_l" type="number" value="' + (l || 30) + '"> End-⌀ <input class="s_d2" type="number" value="0" title="0 = kein Kegel"><button type="button" class="rmfeat">✕</button>';
       wrap.appendChild(div); bindRow(div); refresh();
     }
 
@@ -402,6 +408,7 @@
       if (type === "platte") {
         document.getElementById("c_addb").addEventListener("click", function () { addFeat("bohrung"); });
         document.getElementById("c_addg").addEventListener("click", function () { addFeat("gewinde"); });
+        document.getElementById("c_addl").addEventListener("click", function () { addFeat("langloch"); });
         addFeat("bohrung", 25, 25, 12); addFeat("gewinde", 65, 25);
       } else if (type === "welle") {
         document.getElementById("c_addseg").addEventListener("click", function () { addSeg(); });
@@ -426,7 +433,7 @@
   var SK_TOOLS = [
     { k: "linie", l: "Linie" }, { k: "center", l: "Mittellinie" }, { k: "kreis", l: "Kreis" },
     { k: "bogen", l: "Bogen" }, { k: "rechteck", l: "Rechteck" }, { k: "mass", l: "Maß" },
-    { k: "text", l: "Text" }, { k: "loeschen", l: "Löschen" },
+    { k: "radius", l: "Radius" }, { k: "text", l: "Text" }, { k: "verschieben", l: "Verschieben" }, { k: "loeschen", l: "Löschen" },
   ];
   function viewSkizze() {
     setNav("skizze");
@@ -475,6 +482,7 @@
       sfG = document.getElementById("sk-schriftfeld"), preview = document.getElementById("sk-preview"),
       cursor = document.getElementById("sk-cursor"), hint = document.getElementById("sk-hint");
     var GRID = 5, els = [], tool = "linie", pts = [], snap = true, showSF = false, titel = "Skizze";
+    var moveIdx = -1, movePick = null;
     var LS = "az-skizze-v1";
 
     function toMM(evt) {
@@ -493,6 +501,7 @@
       if (t === "kreis") return { type: "circle", cx: P[0].x, cy: P[0].y, r: +dist(P[0], P[1]).toFixed(1) };
       if (t === "rechteck") return { type: "rect", x: Math.min(P[0].x, P[1].x), y: Math.min(P[0].y, P[1].y), w: Math.abs(P[1].x - P[0].x), h: Math.abs(P[1].y - P[0].y) };
       if (t === "mass") return { type: "dim", x1: P[0].x, y1: P[0].y, x2: P[1].x, y2: P[1].y };
+      if (t === "radius") return { type: "rdim", cx: P[0].x, cy: P[0].y, ex: P[1].x, ey: P[1].y };
       if (t === "bogen") { var c = P[0]; return { type: "arc", cx: c.x, cy: c.y, r: +dist(c, P[1]).toFixed(1), a0: Math.atan2(P[1].y - c.y, P[1].x - c.x), a1: Math.atan2(P[2].y - c.y, P[2].x - c.x) }; }
       return null;
     }
@@ -514,6 +523,11 @@
         if (ang > 90 || ang < -90) ang += 180;
         return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" class="' + (prev ? "sk-prev" : "sk-dim") + '" marker-start="url(#skas)" marker-end="url(#skae)"/>' +
           (prev ? "" : '<text x="' + mx + '" y="' + (my - 1.4) + '" text-anchor="middle" class="sk-dimtx" transform="rotate(' + ang.toFixed(1) + ' ' + mx + ' ' + my + ')">' + Math.round(d2) + '</text>');
+      }
+      if (e.type === "rdim") {
+        var rr = Math.round(Math.sqrt(Math.pow(e.ex - e.cx, 2) + Math.pow(e.ey - e.cy, 2)));
+        return '<line x1="' + e.cx + '" y1="' + e.cy + '" x2="' + e.ex + '" y2="' + e.ey + '" class="' + (prev ? "sk-prev" : "sk-dim") + '" marker-end="url(#skae)"/>' +
+          (prev ? "" : '<text x="' + (e.ex + 1) + '" y="' + (e.ey - 1) + '" class="sk-dimtx">R' + rr + '</text>');
       }
       return "";
     }
@@ -540,22 +554,35 @@
     }
     function elDist(e, p) {
       if (e.type === "line" || e.type === "dim") return segDist(p.x, p.y, e.x1, e.y1, e.x2, e.y2);
+      if (e.type === "rdim") return segDist(p.x, p.y, e.cx, e.cy, e.ex, e.ey);
       if (e.type === "circle" || e.type === "arc") return Math.abs(Math.sqrt(Math.pow(p.x - e.cx, 2) + Math.pow(p.y - e.cy, 2)) - e.r);
       if (e.type === "rect") return Math.min(segDist(p.x, p.y, e.x, e.y, e.x + e.w, e.y), segDist(p.x, p.y, e.x, e.y + e.h, e.x + e.w, e.y + e.h), segDist(p.x, p.y, e.x, e.y, e.x, e.y + e.h), segDist(p.x, p.y, e.x + e.w, e.y, e.x + e.w, e.y + e.h));
       if (e.type === "text") return Math.sqrt(Math.pow(p.x - e.x, 2) + Math.pow(p.y - e.y, 2));
       return 1e9;
+    }
+    function nearestIdx(p) { var best = -1, bd = 5; els.forEach(function (e, i) { var d = elDist(e, p); if (d < bd) { bd = d; best = i; } }); return best; }
+    function translate(e, dx, dy) {
+      if (e.type === "line" || e.type === "dim") { e.x1 += dx; e.y1 += dy; e.x2 += dx; e.y2 += dy; }
+      else if (e.type === "rdim") { e.cx += dx; e.cy += dy; e.ex += dx; e.ey += dy; }
+      else if (e.type === "circle" || e.type === "arc") { e.cx += dx; e.cy += dy; }
+      else if (e.type === "rect" || e.type === "text") { e.x += dx; e.y += dy; }
     }
     function deleteNear(p) {
       var best = -1, bd = 4;
       els.forEach(function (e, i) { var d = elDist(e, p); if (d < bd) { bd = d; best = i; } });
       if (best >= 0) { els.splice(best, 1); render(); }
     }
-    function firstHint() { setHint(toolLabel() + (tool === "text" ? " — Position klicken." : tool === "loeschen" ? " — Element anklicken." : " — ersten Punkt klicken.")); }
+    function firstHint() { setHint(toolLabel() + (tool === "text" ? " — Position klicken." : (tool === "loeschen" || tool === "verschieben") ? " — Element anklicken." : " — ersten Punkt klicken.")); }
 
     svg.addEventListener("click", function (evt) {
       var p = toMM(evt);
       if (tool === "text") { var tx = window.prompt("Text:"); if (tx) { els.push({ type: "text", x: p.x, y: p.y, text: tx }); render(); } return; }
       if (tool === "loeschen") { deleteNear(p); return; }
+      if (tool === "verschieben") {
+        if (moveIdx < 0) { moveIdx = nearestIdx(p); movePick = p; setHint(moveIdx >= 0 ? "Verschieben — Zielpunkt klicken (Esc bricht ab)." : "Verschieben — kein Element getroffen, näher klicken."); }
+        else { translate(els[moveIdx], p.x - movePick.x, p.y - movePick.y); moveIdx = -1; preview.innerHTML = ""; render(); firstHint(); }
+        return;
+      }
       pts.push(p);
       if (pts.length >= ptNeed(tool)) { var e = makeEl(tool, pts); if (e) els.push(e); pts = []; preview.innerHTML = ""; render(); firstHint(); }
       else setHint(toolLabel() + " — nächsten Punkt (" + pts.length + "/" + ptNeed(tool) + ", Esc bricht ab).");
@@ -563,18 +590,19 @@
     svg.addEventListener("mousemove", function (evt) {
       var p = toMM(evt);
       cursor.setAttribute("cx", p.x); cursor.setAttribute("cy", p.y); cursor.style.display = "";
+      if (tool === "verschieben") { if (moveIdx >= 0 && movePick) { var cl = JSON.parse(JSON.stringify(els[moveIdx])); translate(cl, p.x - movePick.x, p.y - movePick.y); preview.innerHTML = elSvg(cl, true); } return; }
       if (!pts.length || tool === "text" || tool === "loeschen") { return; }
       var P = pts.concat([p]);
       if (tool === "bogen" && pts.length === 1) { preview.innerHTML = '<line x1="' + pts[0].x + '" y1="' + pts[0].y + '" x2="' + p.x + '" y2="' + p.y + '" class="sk-prev"/>'; return; }
       var e = makeEl(tool, P); preview.innerHTML = e ? elSvg(e, true) : "";
     });
     svg.addEventListener("mouseleave", function () { cursor.style.display = "none"; });
-    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { pts = []; preview.innerHTML = ""; firstHint(); } });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { pts = []; moveIdx = -1; preview.innerHTML = ""; firstHint(); } });
 
     Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (btn) {
       btn.addEventListener("click", function () {
         Array.prototype.forEach.call(document.querySelectorAll(".sk-tool"), function (b) { b.classList.toggle("active", b === btn); });
-        tool = btn.getAttribute("data-tool"); pts = []; preview.innerHTML = ""; firstHint();
+        tool = btn.getAttribute("data-tool"); pts = []; moveIdx = -1; preview.innerHTML = ""; firstHint();
       });
     });
     document.getElementById("sk-snap").addEventListener("change", function () { snap = this.checked; });
@@ -611,6 +639,7 @@
         { type: "rect", x: 70, y: 55, w: 120, h: 70 },
         { type: "circle", cx: 130, cy: 90, r: 22 },
         { type: "arc", cx: 130, cy: 90, r: 40, a0: -Math.PI / 2, a1: 0 },
+        { type: "rdim", cx: 130, cy: 90, ex: 149.6, ey: 79.6 },
         { type: "line", cls: "center", x1: 130, y1: 45, x2: 130, y2: 135 },
         { type: "line", cls: "center", x1: 60, y1: 90, x2: 200, y2: 90 },
         { type: "dim", x1: 70, y1: 140, x2: 190, y2: 140 },
